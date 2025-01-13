@@ -1,1 +1,3 @@
 add_subdirectory(mediax_rtp_sap_transmit)
+add_subdirectory(gxa-1_capture)
+add_subdirectory(gxa-1_as_gpioctl)

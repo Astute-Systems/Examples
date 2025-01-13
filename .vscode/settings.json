@@ -3,5 +3,8 @@
         "gflags",
         "gstreamer",
         "MEDIAX"
-    ]
+    ],
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "C_Cpp.clang_format_fallbackStyle": "{BasedOnStyle: Google, ColumnLimit: 120}"
 }
