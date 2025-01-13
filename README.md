@@ -6,7 +6,7 @@ A collection of code examples for use by customer
 | --------------------- | ---------------------------------------- |
 | rtp-sap-transmit      | MediaX example RTP video stream          |
 | capture               | GXA-1 capture analogue video example     |
-| as-gpioctl            | GXA_1 example gpio control               |
+| as-gpioctl            | GXA-1 example gpio control               |
 
 ## Building
 
@@ -28,6 +28,6 @@ make rtp-sap-transmit
 
 ## Links
 
-- Astute Systems https://astutesys.com/software
-- MediaX https://astute-systems.github.io/MediaX
-- GXA-1 https://astutesys.com/gxa-1
+- Astute Systems <https://astutesys.com/software>
+- MediaX <https://astute-systems.github.io/MediaX>
+- GXA-1 <https://astutesys.com/gxa-1>
