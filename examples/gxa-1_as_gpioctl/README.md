@@ -1,6 +1,6 @@
-# as-gpioctl GXA-1 GPIO Control Tool
+# as-gpioctl
 
-This tool allows you to manage the GPIO pins on the GXA-1 using the gpiod library. It provides command-line options to turn the BIT LED on or off, display information about GPIO and devices, and control the wait time.
+This GXA-1 GPIO control tool allows you to manage the GPIO pins on the GXA-1 using the gpiod library. It provides command-line options to turn the BIT LED on or off, display information about GPIO and devices, and control the wait time.
 
 ## Prerequisites
 
