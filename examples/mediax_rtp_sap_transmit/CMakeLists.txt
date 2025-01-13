@@ -19,3 +19,7 @@ target_link_libraries(rtp-sap-transmit ${MEDIAX_LIBRARIES})
 # Transmit example linked against .a library
 add_executable(rtp-sap-transmit-static rtp_sap_transmit.cc)
 target_link_libraries(rtp-sap-transmit-static ${MEDIAX_STATIC_LIBRARIES})
+
+# Don't build automatically as part of all (mediax needs to be installed)
+set_target_properties(rtp-sap-transmit PROPERTIES EXCLUDE_FROM_ALL TRUE)
+set_target_properties(rtp-sap-transmit-static PROPERTIES EXCLUDE_FROM_ALL TRUE)
