@@ -6,4 +6,4 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
-apt install cmake g++ make libgpiod-dev 
+apt install cmake g++ make libgpiod-dev -y
