@@ -1,7 +1,13 @@
 {
     "cSpell.words": [
         "gflags",
+        "gpioctl",
+        "gpiod",
         "gstreamer",
+        "ledoff",
+        "ledon",
+        "libgflags",
+        "libgpiod",
         "MEDIAX"
     ],
     "editor.formatOnSave": true,
