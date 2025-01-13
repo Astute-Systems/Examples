@@ -14,8 +14,9 @@
 #include "rtp/rtp.h"
 
 int main(int argc, char *argv[]) {
-  mediax::RtpSapTransmit<mediax::rtp::uncompressed::RtpUncompressedPayloader> rtp(
-      "238.192.1.1", 5004, "test-session-name", 640, 480, 25, "AV1");
+  // mediax::RtpSapTransmit<mediax::rtp::uncompressed::RtpUncompressedPayloader> rtp(
+  mediax::RtpSapTransmit<mediax::rtp::h264::gst::open::RtpH264GstOpenPayloader> rtp(
+      "238.192.1.1", 5004, "test-session-name", 640, 480, 25, "H264");
   std::vector<uint8_t> &data = rtp.GetBufferTestPattern(10);  // Bouncing ball
   while (true) rtp.Transmit(data.data(), false);
 }

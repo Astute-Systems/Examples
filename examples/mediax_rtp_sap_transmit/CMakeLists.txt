@@ -7,11 +7,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(MEDIAX_STATIC REQUIRED mediax_static)
 pkg_check_modules(MEDIAX REQUIRED mediax)
 
-message(STATUS "MEDIAX_STATIC_INCLUDE_DIRS: ${MEDIAX_STATIC_INCLUDE_DIRS}")
-message(STATUS "MEDIAX_STATIC_LIBRARIES: ${MEDIAX_STATIC_LIBRARIES}")
-message(STATUS "MEDIAX_INCLUDE_DIRS: ${MEDIAX_INCLUDE_DIRS}")
-message(STATUS "MEDIAX_LIBRARIES: ${MEDIAX_LIBRARIES}")
-
 include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/include ${MEDIAX_INCLUDE_DIRS})
 
 # This line is use if we wish to compile with Gstreamer support enabled
