@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10…3.16)
 
+set(EXCLUDE_FROM_ALL TRUE)
 project(rtp-sap-transmit)
 
 find_package(PkgConfig REQUIRED)
@@ -12,8 +13,9 @@ include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/include ${MEDIAX
 # This line is use if we wish to compile with Gstreamer support enabled
 add_definitions(-DGST_SUPPORTED)
 
-# Transmit example linked against .so library
+# Transmit example linked against .so library, exclude from all as it requires mediax to be installed
 add_executable(rtp-sap-transmit rtp_sap_transmit.cc)
+
 target_link_libraries(rtp-sap-transmit ${MEDIAX_LIBRARIES})
 
 # Transmit example linked against .a library

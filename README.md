@@ -2,15 +2,16 @@
 
 A collection of code examples for use by customer
 
-| Example               |  Description                             |
-| --------------------- | ---------------------------------------- |
-| rtp-sap-transmit      | MediaX example RTP video stream          |
-| capture               | GXA-1 capture analogue video example     |
-| as-gpioctl            | GXA-1 example gpio control               |
+| Example          | Description                                                 |
+| ---------------- | ----------------------------------------------------------- |
+| rtp-sap-transmit | MediaX example RTP video stream                             |
+| capture_c        | GXA-1 capture analogue video example in C                   |
+| capture_cpp      | GXA-1 capture analogue video example in C++ with SDL render |
+| as-gpioctl       | GXA-1 example gpio control                                  |
 
 ## Building
 
-To build a specific example, select a test from the table above and run
+To build a specific example, select a test from the table above and run. Run ```./scripts/init_build_machine.sh``` to satisfy the dependancies.
 
 ``` .bash
 mkdir build && cd build

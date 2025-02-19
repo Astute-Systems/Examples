@@ -88,8 +88,10 @@ static void process_image(const void *p, int frame) {
   info.height = HEIGHT;
   info.stride = info.width * BYTESPERPIXEL;
 
-  Resolution res = {info.width, info.height};
-  display.DisplayBuffer((uint8_t *)p, res, "Video Capture");
+  // Create a display buffer
+  // Fill with 0xaa
+
+  // display.DisplayBuffer((uint8_t *)p, res, "Video Capture");
 }
 
 static int read_frame(int count) {
@@ -596,6 +598,13 @@ int main(int argc, char **argv) {
   dev_name = "/dev/video0";
 
   display.Initalise();
+
+  // Test
+  uint8_t *buf = (uint8_t *)malloc(720 * 576 * 4);
+
+  for (int i = 0; i < 720 * 576 * 4; i++) buf[i] = 0xaa;
+  Resolution res = {720, 576};
+  display.DisplayBuffer((uint8_t *)buf, res, "Video Capture");
 
   for (;;) {
     int index;
