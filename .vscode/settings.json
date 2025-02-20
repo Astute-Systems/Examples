@@ -79,5 +79,7 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "C_Cpp.clang_format_path": "/usr/bin",
+    "C_Cpp.clang_format_sortIncludes": true
 }

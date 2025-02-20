@@ -140,7 +140,7 @@ static void process_image(const void *p, int frame) {
   /* fflush (stdout); */
 
   /* printf ("frame = %i\tptr = %p\n", frame, p); */
-  printf("frame = %i,\t", frame);
+  printf("frame = %i,\r", frame);
 
   /* set up the image save( or if SDL, display to screen) */
   info.width = WIDTH;
@@ -570,7 +570,7 @@ static void init_device(void) {
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   fmt.fmt.pix.width = WIDTH;
   fmt.fmt.pix.height = HEIGHT;
-  /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; */
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; 
   /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24; */
   if (BYTESPERPIXEL == 3)
     /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_BGR24;
@@ -828,18 +828,25 @@ int main(int argc, char **argv) {
     }
   }
 
+  printf("Opening device %s\n", dev_name);
   open_device();
 
+  printf("Initializing device\n");
   init_device();
 
+  printf("Starting capture\n");
   start_capturing();
 
+  printf("Capturing frames\n");
   mainloop();
 
+  printf("Stopping capture\n");
   stop_capturing();
 
+  printf("Uninitializing device\n");
   uninit_device();
 
+  printf("Closing device\n");
   close_device();
 
   exit(EXIT_SUCCESS);

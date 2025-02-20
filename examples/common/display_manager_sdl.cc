@@ -235,10 +235,7 @@ Status DisplayManager::DisplayBuffer(uint8_t *frame_buffer, Resolution resolutio
     std::cerr << "Resolution changed to " << width_ << "x" << height_ << "\n";
   }
 
-  // mediax::video::ColourSpaceCpu converter;
-
-  // // Convert from RGBA to RGB
-  // converter.RgbaToRgb(width_, height_, frame_buffer, draw_buffer_.data());
+  memcpy(draw_buffer_.data(), frame_buffer, resolution.height * resolution.width * resolution.bpp);
 
   // Fill the mask area with black, last kMaskBottomPixels at the bottom of the screen
   draw_buffer_.resize((width_ * 3) * (height_));

@@ -6,17 +6,19 @@
 // Licensed under the Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
 // License. See the LICENSE file in the project root for full license details.
 //
-// \brief An example of how to capture video on the GXA-1
-//
-// \file video_capture.cc
-//
+/// \brief An example of how to capture video on the GXA-1
+///
+/// mplayer tv:// -tv driver=v4l2:norm=PAL:device=/dev/video0
+///
+/// \file video_capture.cc
+///
 
-#include <asm/types.h> /* for videodev2.h */
+#include <asm/types.h>  // for videodev2.h
 #include <assert.h>
 #include <common/display_manager_sdl.h>
 #include <errno.h>
-#include <fcntl.h>  /* low-level i/o */
-#include <getopt.h> /* getopt_long() */
+#include <fcntl.h>   // low-level i/o
+#include <getopt.h>  // getopt_long()
 #include <linux/videodev2.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,9 +29,12 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <libswscale/swscale.h>
+#include <algorithm>  // for std::clamp
 
 #include <cstdlib>
 #include <iostream>
+#include <thread>
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
@@ -64,7 +69,7 @@ typedef struct {
 DisplayManager display;
 
 static void errno_exit(const char *s) {
-  fprintf(stderr, "%s error %d, %s\n", s, errno, strerror(errno));
+  std::cerr << s << " error " << errno << ", " << strerror(errno) << std::endl;
 
   exit(EXIT_FAILURE);
 }
@@ -78,20 +83,56 @@ static int xioctl(int fd, int request, void *arg) {
   return r;
 }
 
+static void yuv422_to_rgb(const uint8_t* yuv, uint8_t* rgb, int width, int height) {
+    int frameSize = width * height * 2;
+    int rgbIndex = 0;
+
+    for (int i = 0; i < frameSize; i += 4) {
+        uint8_t y0 = yuv[i];
+        uint8_t u = yuv[i + 1];
+        uint8_t y1 = yuv[i + 2];
+        uint8_t v = yuv[i + 3];
+
+        int c = y0 - 16;
+        int d = u - 128;
+        int e = v - 128;
+
+        int r = (298 * c + 409 * e + 128) >> 8;
+        int g = (298 * c - 100 * d - 208 * e + 128) >> 8;
+        int b = (298 * c + 516 * d + 128) >> 8;
+
+        rgb[rgbIndex++] = std::clamp(r, 0, 255);
+        rgb[rgbIndex++] = std::clamp(g, 0, 255);
+        rgb[rgbIndex++] = std::clamp(b, 0, 255);
+
+        c = y1 - 16;
+        r = (298 * c + 409 * e + 128) >> 8;
+        g = (298 * c - 100 * d - 208 * e + 128) >> 8;
+        b = (298 * c + 516 * d + 128) >> 8;
+
+        rgb[rgbIndex++] = std::clamp(r, 0, 255);
+        rgb[rgbIndex++] = std::clamp(g, 0, 255);
+        rgb[rgbIndex++] = std::clamp(b, 0, 255);
+    }
+}
+
+
 static void process_image(const void *p, int frame) {
   image_info_t info;
-  // printf ("frame = %i\tptr = %p\n", frame, p);
-  std::cout << "frame = " << frame << "\t";
 
   // set up the image save( or if SDL, display to screen)
   info.width = WIDTH;
   info.height = HEIGHT;
   info.stride = info.width * BYTESPERPIXEL;
 
-  // Create a display buffer
-  // Fill with 0xaa
+  // Convert YUV422 to RGB
+  uint8_t* rgb_buffer = (uint8_t*)malloc(WIDTH * HEIGHT * 3);
+  yuv422_to_rgb((const uint8_t*)p, rgb_buffer, WIDTH, HEIGHT);
 
-  // display.DisplayBuffer((uint8_t *)p, res, "Video Capture");
+  Resolution res = {info.width, info.height, 3};
+  display.DisplayBuffer(rgb_buffer, res, "Video Capture");
+
+  free(rgb_buffer);
 }
 
 static int read_frame(int count) {
@@ -211,11 +252,12 @@ static void mainloop(void) {
       }
 
       if (0 == r) {
-        fprintf(stderr, "select timeout\n");
+        std::cerr << "select timeout\n";
         exit(EXIT_FAILURE);
       }
 
-      if (read_frame(GRAB_NUM_FRAMES - count)) break;
+      // if (read_frame(GRAB_NUM_FRAMES - count)) break;
+      read_frame(GRAB_NUM_FRAMES - count);
 
       // EAGAIN - continue select loop.
     }
@@ -246,7 +288,7 @@ static void start_capturing(void) {
 
   switch (io) {
     case IO_METHOD_READ:
-      /* Nothing to do. */
+      // Nothing to do.
       break;
 
     case IO_METHOD_MMAP:
@@ -296,7 +338,7 @@ static void uninit_device(void) {
   switch (io) {
     case IO_METHOD_READ:
       free(buffers[0].start);
-      break;
+       break;
 
     case IO_METHOD_MMAP:
       for (i = 0; i < n_buffers; ++i)
@@ -315,7 +357,7 @@ static void init_read(unsigned int buffer_size) {
   buffers = (buffer *)calloc(1, sizeof(*buffers));
 
   if (!buffers) {
-    fprintf(stderr, "Out of memory\n");
+    std::cerr << "Out of memory\n";
     exit(EXIT_FAILURE);
   }
 
@@ -323,7 +365,7 @@ static void init_read(unsigned int buffer_size) {
   buffers[0].start = malloc(buffer_size);
 
   if (!buffers[0].start) {
-    fprintf(stderr, "Out of memory\n");
+    std::cerr << "Out of memory\n";
     exit(EXIT_FAILURE);
   }
 }
@@ -339,10 +381,7 @@ static void init_mmap(void) {
 
   if (-1 == xioctl(fd, VIDIOC_REQBUFS, &req)) {
     if (EINVAL == errno) {
-      fprintf(stderr,
-              "%s does not support "
-              "memory mapping\n",
-              dev_name);
+      std::cerr << dev_name << " does not support memory mapping\n";
       exit(EXIT_FAILURE);
     } else {
       errno_exit("VIDIOC_REQBUFS");
@@ -350,14 +389,14 @@ static void init_mmap(void) {
   }
 
   if (req.count < 2) {
-    fprintf(stderr, "Insufficient buffer memory on %s\n", dev_name);
+    std::cerr << "Insufficient buffer memory on " << dev_name << "\n";
     exit(EXIT_FAILURE);
   }
 
   buffers = (buffer *)calloc(req.count, sizeof(*buffers));
 
   if (!buffers) {
-    fprintf(stderr, "Out of memory\n");
+    std::cerr << "Out of memory\n";
     exit(EXIT_FAILURE);
   }
 
@@ -391,10 +430,7 @@ static void init_userp(unsigned int buffer_size) {
 
   if (-1 == xioctl(fd, VIDIOC_REQBUFS, &req)) {
     if (EINVAL == errno) {
-      fprintf(stderr,
-              "%s does not support "
-              "user pointer i/o\n",
-              dev_name);
+      std::cerr << dev_name << " does not support user pointer i/o\n";
       exit(EXIT_FAILURE);
     } else {
       errno_exit("VIDIOC_REQBUFS");
@@ -404,7 +440,7 @@ static void init_userp(unsigned int buffer_size) {
   buffers = (buffer *)calloc(4, sizeof(*buffers));
 
   if (!buffers) {
-    fprintf(stderr, "Out of memory\n");
+    std::cerr << "Out of memory\n";
     exit(EXIT_FAILURE);
   }
 
@@ -413,7 +449,7 @@ static void init_userp(unsigned int buffer_size) {
     buffers[n_buffers].start = malloc(buffer_size);
 
     if (!buffers[n_buffers].start) {
-      fprintf(stderr, "Out of memory\n");
+      std::cerr << "Out of memory\n";
       exit(EXIT_FAILURE);
     }
   }
@@ -427,11 +463,9 @@ static void init_device(void) {
   unsigned int min;
   int input, standard;
 
-  printf("\nstaring device initialization, for %s, ...\n", dev_name);
-
   if (-1 == xioctl(fd, VIDIOC_QUERYCAP, &cap)) {
     if (EINVAL == errno) {
-      fprintf(stderr, "%s is no V4L2 device\n", dev_name);
+      std::cerr << dev_name << " is no V4L2 device\n";
       exit(EXIT_FAILURE);
     } else {
       errno_exit("VIDIOC_QUERYCAP");
@@ -439,14 +473,14 @@ static void init_device(void) {
   }
 
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-    fprintf(stderr, "%s is no video capture device\n", dev_name);
+    std::cerr << dev_name << " is no video capture device\n";
     exit(EXIT_FAILURE);
   }
 
   switch (io) {
     case IO_METHOD_READ:
       if (!(cap.capabilities & V4L2_CAP_READWRITE)) {
-        fprintf(stderr, "%s does not support read i/o\n", dev_name);
+        std::cerr << dev_name << " does not support read i/o\n";
         exit(EXIT_FAILURE);
       }
 
@@ -455,42 +489,42 @@ static void init_device(void) {
     case IO_METHOD_MMAP:
     case IO_METHOD_USERPTR:
       if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
-        fprintf(stderr, "%s does not support streaming i/o\n", dev_name);
+        std::cerr << dev_name << " does not support streaming i/o\n";
         exit(EXIT_FAILURE);
       }
 
       break;
   }
 
-  /* Select video input, video standard and tune here. */
+  // Select video input, video standard and tune here.
 
-  /* Reset Cropping */
-  printf("...reset cropping of %s ...\n", dev_name);
+  // Reset Cropping
+  std::cout << "...reset cropping of " << dev_name << " ..." << std::endl;
   CLEAR(cropcap);
   cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
   if (-1 == xioctl(fd, VIDIOC_CROPCAP, &cropcap)) {
-    /* Errors ignored. */
+    // Errors ignored.
   }
 
   crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  crop.c = cropcap.defrect; /* reset to default */
+  crop.c = cropcap.defrect;  // reset to default
 
   if (-1 == xioctl(fd, VIDIOC_S_CROP, &crop)) {
     switch (errno) {
       case EINVAL:
-        /* Cropping not supported. */
+        // Cropping not supported.
         break;
       default:
-        /* Errors ignored. */
+        // Errors ignored.
         break;
     }
   }
   sleep(1);
 
-  /* Select standard */
-  printf("...select standard of %s ...\n", dev_name);
-  /* standard = V4L2_STD_NTSC; */
+  // Select standard
+  std::cout << "...select standard of " << dev_name << " ..." << std::endl;
+  // standard = V4L2_STD_NTSC;
   standard = V4L2_STD_PAL;
   if (-1 == xioctl(fd, VIDIOC_S_STD, &standard)) {
     perror("VIDIOC_S_STD");
@@ -498,9 +532,9 @@ static void init_device(void) {
   }
   sleep(1);
 
-  /* Select input */
-  printf("...select input channel of %s ...\n\n", dev_name);
-  input = 0; /* Composite-0 */
+  // Select input
+  std::cout << "...select input channel of " << dev_name << " ..." << std::endl << std::endl;
+  input = 0;  // Composite-0
   if (-1 == ioctl(fd, VIDIOC_S_INPUT, &input)) {
     perror("VIDIOC_S_INPUT");
     exit(EXIT_FAILURE);
@@ -512,22 +546,13 @@ static void init_device(void) {
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   fmt.fmt.pix.width = WIDTH;
   fmt.fmt.pix.height = HEIGHT;
-  /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; */
-  /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24; */
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   if (BYTESPERPIXEL == 3)
-    /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_BGR24;
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-else
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_GREY;
-fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
-/* fmt.fmt.pix.field       = V4L2_FIELD_ANY;  */
-    /* works too */
-
     if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt)) errno_exit("VIDIOC_S_FMT");
 
-  /* Note VIDIOC_S_FMT may change width and height. */
+  // Note VIDIOC_S_FMT may change width and height.
 
-  /* Buggy driver paranoia. */
+  // Buggy driver paranoia.
   min = fmt.fmt.pix.width * BYTESPERPIXEL;
   if (fmt.fmt.pix.bytesperline < min) fmt.fmt.pix.bytesperline = min;
   min = fmt.fmt.pix.bytesperline * fmt.fmt.pix.height;
@@ -558,19 +583,19 @@ static void open_device(void) {
   struct stat st;
 
   if (-1 == stat(dev_name, &st)) {
-    fprintf(stderr, "Cannot identify '%s': %d, %s\n", dev_name, errno, strerror(errno));
+    std::cerr << "Cannot identify '" << dev_name << "': " << errno << ", " << strerror(errno) << std::endl;
     exit(EXIT_FAILURE);
   }
 
   if (!S_ISCHR(st.st_mode)) {
-    fprintf(stderr, "%s is no device\n", dev_name);
+    std::cerr << dev_name << " is no device\n";
     exit(EXIT_FAILURE);
   }
 
   fd = open(dev_name, O_RDWR /* required */ | O_NONBLOCK, 0);
 
   if (-1 == fd) {
-    fprintf(stderr, "Cannot open '%s': %d, %s\n", dev_name, errno, strerror(errno));
+    std::cerr << "Cannot open '" << dev_name << "': " << errno << ", " << strerror(errno) << std::endl;
     exit(EXIT_FAILURE);
   }
 }
@@ -598,6 +623,9 @@ int main(int argc, char **argv) {
   dev_name = "/dev/video0";
 
   display.Initalise();
+  
+  // Run in thread display.Run()
+  std::thread display_thread(&DisplayManager::Run, &display);
 
   // Test
   uint8_t *buf = (uint8_t *)malloc(720 * 576 * 4);
@@ -650,16 +678,22 @@ int main(int argc, char **argv) {
 
   open_device();
 
+  std::cout << "...device opened..." << std::endl;
   init_device();
 
+  std::cout << "...device initialized..." << std::endl;
   start_capturing();
 
+  std::cout << "...device capturing..." << std::endl;
   mainloop();
 
+  std::cout << "...device capturing stopped..." << std::endl;
   stop_capturing();
 
+  std::cout << "...device capturing stopped..." << std::endl;
   uninit_device();
 
+  std::cout << "...device uninitialized..." << std::endl;
   close_device();
 
   display.Stop();
