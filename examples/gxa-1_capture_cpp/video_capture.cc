@@ -23,9 +23,6 @@
 
 VideoCapture::VideoCapture(const std::string &device, io_method io, const std::string &video_standard)
     : dev_name(device), io(io), fd(-1), video_standard(video_standard) {
-  int height = HEIGHT;
-  int width = WIDTH;
-
   // Set correct resolution based on standard
   if (video_standard == "NTSC") {
     height = 480;
@@ -104,13 +101,13 @@ void VideoCapture::process_image(const void *p) {
   image_info_t info;
 
   // set up the image save( or if SDL, display to screen)
-  info.width = WIDTH;
-  info.height = HEIGHT;
+  info.width = width;
+  info.height = height;
   info.stride = info.width * BYTESPERPIXEL;
 
   // Convert YUV422 to RGB
-  std::vector<uint8_t> rgb_buffer(WIDTH * HEIGHT * 3);
-  yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), WIDTH, HEIGHT);
+  std::vector<uint8_t> rgb_buffer(width * height * 3);
+  yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), width, height);
 
   Resolution res = {info.width, info.height, 3};
   display.DisplayBuffer(rgb_buffer.data(), res, "Video Capture");
@@ -484,8 +481,8 @@ void VideoCapture::init_device() {
   CLEAR(fmt);
 
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  fmt.fmt.pix.width = WIDTH;
-  fmt.fmt.pix.height = HEIGHT;
+  fmt.fmt.pix.width = width;
+  fmt.fmt.pix.height = height;
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   if (BYTESPERPIXEL == 2)
     if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt)) errno_exit("VIDIOC_S_FMT");

@@ -56,6 +56,8 @@ class VideoCapture {
   void open_device();
   void set_video_standard(const std::string &video_standard);
 
+  int height;
+  int width;
   std::string dev_name;
   io_method io;
   int fd;
