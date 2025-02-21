@@ -60,7 +60,7 @@ class DisplayManager : public DisplayManagerBase {
   ///
   /// \return StatusDisplayManager
   Status Initalise() final;
-  Status Initalise(uint32_t width, uint32_t height);
+  Status Initalise(uint32_t width, uint32_t height, std::string title);
 
   ///
   /// \brief Get the Resolution attribute

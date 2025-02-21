@@ -32,7 +32,7 @@ VideoCapture::VideoCapture(const std::string &device, io_method io, const std::s
     width = 720;
   }
 
-  display.Initalise(width, height);
+  display.Initalise(width, height, "Capture " + video_standard);
   std::thread display_thread(&DisplayManager::Run, &display);
   display_thread.detach();
   open_device();

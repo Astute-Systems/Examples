@@ -16,6 +16,7 @@
 #include <signal.h>
 
 #include <iostream>
+#include <string>
 #include <vector>
 
 /// Static frame buffer
@@ -51,9 +52,9 @@ DisplayManager::~DisplayManager() {
   running_ = false;
   SDL_Quit();
 }
-Status DisplayManager::Initalise() { return Initalise(DEFAULT_WIDTH, DEFAULT_HEIGHT); }
+Status DisplayManager::Initalise() { return Initalise(DEFAULT_WIDTH, DEFAULT_HEIGHT, "Drivers Display SDL2"); }
 
-Status DisplayManager::Initalise(uint32_t width, uint32_t height) {
+Status DisplayManager::Initalise(uint32_t width, uint32_t height, std::string title) {
   // Set the width and height
   width_ = width;
   height_ = height;
@@ -93,8 +94,8 @@ Status DisplayManager::Initalise(uint32_t width, uint32_t height) {
   }
 
   // Create the window
-  window_ = SDL_CreateWindow("Drivers Display SDL2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width_, height_,
-                             fullscreen);
+  window_ =
+      SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width_, height_, fullscreen);
 
   if (window_ == nullptr) {
     std::cerr << "Unable to create window: " << SDL_GetError() << "\n";
