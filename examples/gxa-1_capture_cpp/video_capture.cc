@@ -17,10 +17,12 @@
 
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
+#include <vector>
 
-VideoCapture::VideoCapture(const std::string &device, io_method io)
-    : dev_name(device), io(io), fd(-1), buffers(nullptr), n_buffers(0) {
+VideoCapture::VideoCapture(const std::string &device, io_method io, const std::string &video_standard)
+    : dev_name(device), io(io), fd(-1), video_standard(video_standard) {
   display.Initalise();
   std::thread display_thread(&DisplayManager::Run, &display);
   open_device();
@@ -39,10 +41,8 @@ void VideoCapture::Start() { mainloop(); }
 
 void VideoCapture::Stop() { stop_capturing(); }
 
-void VideoCapture::errno_exit(const char *s) {
-  std::cerr << s << " error " << errno << ", " << strerror(errno) << std::endl;
-
-  exit(EXIT_FAILURE);
+void VideoCapture::errno_exit(const std::string &s) {
+  throw std::runtime_error(s + " error " + std::to_string(errno) + ", " + strerror(errno));
 }
 
 int VideoCapture::xioctl(int fd, int request, void *arg) {
@@ -96,13 +96,11 @@ void VideoCapture::process_image(const void *p, int frame) {
   info.stride = info.width * BYTESPERPIXEL;
 
   // Convert YUV422 to RGB
-  uint8_t *rgb_buffer = (uint8_t *)malloc(WIDTH * HEIGHT * 3);
-  yuv422_to_rgb((const uint8_t *)p, rgb_buffer, WIDTH, HEIGHT);
+  std::vector<uint8_t> rgb_buffer(WIDTH * HEIGHT * 3);
+  yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), WIDTH, HEIGHT);
 
   Resolution res = {info.width, info.height, 3};
-  display.DisplayBuffer(rgb_buffer, res, "Video Capture");
-
-  free(rgb_buffer);
+  display.DisplayBuffer(rgb_buffer.data(), res, "Video Capture");
 }
 
 int VideoCapture::read_frame(int count) {
@@ -151,7 +149,7 @@ int VideoCapture::read_frame(int count) {
         }
       }
 
-      assert(buf.index < n_buffers);
+      assert(buf.index < buffers.size());
 
       process_image(buffers[buf.index].start, count);
 
@@ -180,10 +178,10 @@ int VideoCapture::read_frame(int count) {
         }
       }
 
-      for (i = 0; i < n_buffers; ++i)
+      for (i = 0; i < buffers.size(); ++i)
         if (buf.m.userptr == (unsigned long)buffers[i].start && buf.length == buffers[i].length) break;
 
-      assert(i < n_buffers);
+      assert(i < buffers.size());
 
       process_image((void *)buf.m.userptr, count);
 
@@ -196,9 +194,7 @@ int VideoCapture::read_frame(int count) {
 }
 
 void VideoCapture::mainloop() {
-  unsigned int count;
-
-  count = GRAB_NUM_FRAMES;
+  unsigned int count = GRAB_NUM_FRAMES;
 
   while (count-- > 0) {
     for (;;) {
@@ -226,8 +222,7 @@ void VideoCapture::mainloop() {
         exit(EXIT_FAILURE);
       }
 
-      // if (read_frame(GRAB_NUM_FRAMES - count)) break;
-      read_frame(GRAB_NUM_FRAMES - count);
+      if (read_frame(GRAB_NUM_FRAMES - count)) break;
 
       // EAGAIN - continue select loop.
     }
@@ -262,7 +257,7 @@ void VideoCapture::start_capturing() {
       break;
 
     case IO_METHOD_MMAP:
-      for (i = 0; i < n_buffers; ++i) {
+      for (i = 0; i < buffers.size(); ++i) {
         struct v4l2_buffer buf;
 
         CLEAR(buf);
@@ -281,7 +276,7 @@ void VideoCapture::start_capturing() {
       break;
 
     case IO_METHOD_USERPTR:
-      for (i = 0; i < n_buffers; ++i) {
+      for (i = 0; i < buffers.size(); ++i) {
         struct v4l2_buffer buf;
 
         CLEAR(buf);
@@ -303,40 +298,31 @@ void VideoCapture::start_capturing() {
 }
 
 void VideoCapture::uninit_device() {
-  unsigned int i;
+  for (auto &buf : buffers) {
+    switch (io) {
+      case IO_METHOD_READ:
+        free(buf.start);
+        break;
 
-  switch (io) {
-    case IO_METHOD_READ:
-      free(buffers[0].start);
-      break;
+      case IO_METHOD_MMAP:
+        if (-1 == munmap(buf.start, buf.length)) errno_exit("munmap");
+        break;
 
-    case IO_METHOD_MMAP:
-      for (i = 0; i < n_buffers; ++i)
-        if (-1 == munmap(buffers[i].start, buffers[i].length)) errno_exit("munmap");
-      break;
-
-    case IO_METHOD_USERPTR:
-      for (i = 0; i < n_buffers; ++i) free(buffers[i].start);
-      break;
+      case IO_METHOD_USERPTR:
+        free(buf.start);
+        break;
+    }
   }
-
-  free(buffers);
 }
 
 void VideoCapture::init_read(unsigned int buffer_size) {
-  buffers = (buffer *)calloc(1, sizeof(*buffers));
-
-  if (!buffers) {
-    std::cerr << "Out of memory\n";
-    exit(EXIT_FAILURE);
-  }
+  buffers.resize(1);
 
   buffers[0].length = buffer_size;
   buffers[0].start = malloc(buffer_size);
 
   if (!buffers[0].start) {
-    std::cerr << "Out of memory\n";
-    exit(EXIT_FAILURE);
+    throw std::runtime_error("Out of memory");
   }
 }
 
@@ -351,26 +337,19 @@ void VideoCapture::init_mmap() {
 
   if (-1 == xioctl(fd, VIDIOC_REQBUFS, &req)) {
     if (EINVAL == errno) {
-      std::cerr << dev_name << " does not support memory mapping\n";
-      exit(EXIT_FAILURE);
+      throw std::runtime_error(dev_name + " does not support memory mapping");
     } else {
       errno_exit("VIDIOC_REQBUFS");
     }
   }
 
   if (req.count < 2) {
-    std::cerr << "Insufficient buffer memory on " << dev_name << "\n";
-    exit(EXIT_FAILURE);
+    throw std::runtime_error("Insufficient buffer memory on " + dev_name);
   }
 
-  buffers = (buffer *)calloc(req.count, sizeof(*buffers));
+  buffers.resize(req.count);
 
-  if (!buffers) {
-    std::cerr << "Out of memory\n";
-    exit(EXIT_FAILURE);
-  }
-
-  for (n_buffers = 0; n_buffers < req.count; ++n_buffers) {
+  for (int n_buffers = 0; n_buffers < req.count; ++n_buffers) {
     struct v4l2_buffer buf;
 
     CLEAR(buf);
@@ -400,27 +379,20 @@ void VideoCapture::init_userp(unsigned int buffer_size) {
 
   if (-1 == xioctl(fd, VIDIOC_REQBUFS, &req)) {
     if (EINVAL == errno) {
-      std::cerr << dev_name << " does not support user pointer i/o\n";
-      exit(EXIT_FAILURE);
+      throw std::runtime_error(dev_name + " does not support user pointer i/o");
     } else {
       errno_exit("VIDIOC_REQBUFS");
     }
   }
 
-  buffers = (buffer *)calloc(4, sizeof(*buffers));
+  buffers.resize(4);
 
-  if (!buffers) {
-    std::cerr << "Out of memory\n";
-    exit(EXIT_FAILURE);
-  }
-
-  for (n_buffers = 0; n_buffers < 4; ++n_buffers) {
+  for (int n_buffers = 0; n_buffers < 4; ++n_buffers) {
     buffers[n_buffers].length = buffer_size;
     buffers[n_buffers].start = malloc(buffer_size);
 
     if (!buffers[n_buffers].start) {
-      std::cerr << "Out of memory\n";
-      exit(EXIT_FAILURE);
+      throw std::runtime_error("Out of memory");
     }
   }
 }
@@ -431,27 +403,24 @@ void VideoCapture::init_device() {
   struct v4l2_crop crop;
   struct v4l2_format fmt;
   unsigned int min;
-  int input, standard;
+  int input;
 
   if (-1 == xioctl(fd, VIDIOC_QUERYCAP, &cap)) {
     if (EINVAL == errno) {
-      std::cerr << dev_name << " is no V4L2 device\n";
-      exit(EXIT_FAILURE);
+      throw std::runtime_error(dev_name + " is no V4L2 device");
     } else {
       errno_exit("VIDIOC_QUERYCAP");
     }
   }
 
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-    std::cerr << dev_name << " is no video capture device\n";
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(dev_name + " is no video capture device");
   }
 
   switch (io) {
     case IO_METHOD_READ:
       if (!(cap.capabilities & V4L2_CAP_READWRITE)) {
-        std::cerr << dev_name << " does not support read i/o\n";
-        exit(EXIT_FAILURE);
+        throw std::runtime_error(dev_name + " does not support read i/o");
       }
 
       break;
@@ -459,8 +428,7 @@ void VideoCapture::init_device() {
     case IO_METHOD_MMAP:
     case IO_METHOD_USERPTR:
       if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
-        std::cerr << dev_name << " does not support streaming i/o\n";
-        exit(EXIT_FAILURE);
+        throw std::runtime_error(dev_name + " does not support streaming i/o");
       }
 
       break;
@@ -493,13 +461,7 @@ void VideoCapture::init_device() {
   sleep(1);
 
   // Select standard
-  std::cout << "...select standard of " << dev_name << " ..." << std::endl;
-  // standard = V4L2_STD_NTSC;
-  standard = V4L2_STD_PAL;
-  if (-1 == xioctl(fd, VIDIOC_S_STD, &standard)) {
-    perror("VIDIOC_S_STD");
-    exit(EXIT_FAILURE);
-  }
+  set_video_standard(video_standard);
   sleep(1);
 
   // Select input
@@ -553,19 +515,33 @@ void VideoCapture::open_device() {
   struct stat st;
 
   if (-1 == stat(dev_name.c_str(), &st)) {
-    std::cerr << "Cannot identify '" << dev_name << "': " << errno << ", " << strerror(errno) << std::endl;
-    exit(EXIT_FAILURE);
+    throw std::runtime_error("Cannot identify '" + dev_name + "': " + std::to_string(errno) + ", " + strerror(errno));
   }
 
   if (!S_ISCHR(st.st_mode)) {
-    std::cerr << dev_name << " is no device\n";
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(dev_name + " is no device");
   }
 
   fd = open(dev_name.c_str(), O_RDWR /* required */ | O_NONBLOCK, 0);
 
   if (-1 == fd) {
-    std::cerr << "Cannot open '" << dev_name << "': " << errno << ", " << strerror(errno) << std::endl;
+    throw std::runtime_error("Cannot open '" + dev_name + "': " + std::to_string(errno) + ", " + strerror(errno));
+  }
+}
+
+void VideoCapture::set_video_standard(const std::string &standard) {
+  v4l2_std_id std_id;
+
+  if (standard == "NTSC") {
+    std_id = V4L2_STD_NTSC;
+  } else if (standard == "PAL") {
+    std_id = V4L2_STD_PAL;
+  } else {
+    throw std::runtime_error("Unsupported video standard: " + standard);
+  }
+
+  if (-1 == xioctl(fd, VIDIOC_S_STD, &std_id)) {
+    perror("VIDIOC_S_STD");
     exit(EXIT_FAILURE);
   }
 }

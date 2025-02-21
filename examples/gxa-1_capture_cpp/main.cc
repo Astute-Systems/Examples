@@ -45,15 +45,18 @@
 DEFINE_string(device, "/dev/video0", "Video device name [/dev/video]");
 // IO Method
 DEFINE_int32(io_method, 1, "IO Method: 1 - MMAP, 2 - READ, 3 - USERPTR");
+// Flag to set video standard
+DEFINE_string(video_standard, "PAL", "Video standard [PAL, NTSC]");
 
 int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   std::string device = FLAGS_device;
   io_method io = static_cast<io_method>(FLAGS_io_method);
+  std::string video_standard = FLAGS_video_standard;
 
   try {
-    VideoCapture capture(device, io);
+    VideoCapture capture(device, io, video_standard);
     capture.Start();
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;

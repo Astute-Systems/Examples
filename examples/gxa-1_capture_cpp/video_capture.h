@@ -2,8 +2,10 @@
 #define VIDEO_CAPTURE_H
 
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "common/display_manager_sdl.h"
 
@@ -32,13 +34,13 @@ typedef struct {
 
 class VideoCapture {
  public:
-  VideoCapture(const std::string &device, io_method io);
+  VideoCapture(const std::string &device, io_method io, const std::string &video_standard);
   ~VideoCapture();
   void Start();
   void Stop();
 
  private:
-  void errno_exit(const char *s);
+  void errno_exit(const std::string &s);
   int xioctl(int fd, int request, void *arg);
   void yuv422_to_rgb(const uint8_t *yuv, uint8_t *rgb, int width, int height);
   void process_image(const void *p, int frame);
@@ -53,13 +55,14 @@ class VideoCapture {
   void init_device();
   void close_device();
   void open_device();
+  void set_video_standard(const std::string &video_standard);
 
   std::string dev_name;
   io_method io;
   int fd;
-  struct buffer *buffers;
-  unsigned int n_buffers;
+  std::vector<buffer> buffers;
   DisplayManager display;
+  std::string video_standard;
 };
 
 #endif  // VIDEO_CAPTURE_H
