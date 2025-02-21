@@ -25,9 +25,11 @@ VideoCapture::VideoCapture(const std::string &device, io_method io, const std::s
     : dev_name(device), io(io), fd(-1), video_standard(video_standard) {
   display.Initalise();
   std::thread display_thread(&DisplayManager::Run, &display);
+  display_thread.detach();
   open_device();
   init_device();
   start_capturing();
+  std::cout << "Stopping video capture\n";
 }
 
 VideoCapture::~VideoCapture() {
@@ -87,7 +89,7 @@ void VideoCapture::yuv422_to_rgb(const uint8_t *yuv, uint8_t *rgb, int width, in
   }
 }
 
-void VideoCapture::process_image(const void *p, int frame) {
+void VideoCapture::process_image(const void *p) {
   image_info_t info;
 
   // set up the image save( or if SDL, display to screen)
@@ -103,7 +105,7 @@ void VideoCapture::process_image(const void *p, int frame) {
   display.DisplayBuffer(rgb_buffer.data(), res, "Video Capture");
 }
 
-int VideoCapture::read_frame(int count) {
+int VideoCapture::read_frame() {
   struct v4l2_buffer buf;
   unsigned int i;
 
@@ -124,7 +126,7 @@ int VideoCapture::read_frame(int count) {
         }
       }
 
-      process_image(buffers[0].start, count);
+      process_image(buffers[0].start);
 
       break;
 
@@ -151,7 +153,7 @@ int VideoCapture::read_frame(int count) {
 
       assert(buf.index < buffers.size());
 
-      process_image(buffers[buf.index].start, count);
+      process_image(buffers[buf.index].start);
 
       if (-1 == xioctl(fd, VIDIOC_QBUF, &buf)) errno_exit("VIDIOC_QBUF");
 
@@ -183,7 +185,7 @@ int VideoCapture::read_frame(int count) {
 
       assert(i < buffers.size());
 
-      process_image((void *)buf.m.userptr, count);
+      process_image((void *)buf.m.userptr);
 
       if (-1 == xioctl(fd, VIDIOC_QBUF, &buf)) errno_exit("VIDIOC_QBUF");
 
@@ -194,38 +196,35 @@ int VideoCapture::read_frame(int count) {
 }
 
 void VideoCapture::mainloop() {
-  unsigned int count = GRAB_NUM_FRAMES;
+  for (;;) {
+    fd_set fds;
+    struct timeval tv;
+    int r;
 
-  while (count-- > 0) {
-    for (;;) {
-      fd_set fds;
-      struct timeval tv;
-      int r;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
 
-      FD_ZERO(&fds);
-      FD_SET(fd, &fds);
+    // Timeout
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
 
-      // Timeout
-      tv.tv_sec = 2;
-      tv.tv_usec = 0;
+    r = select(fd + 1, &fds, NULL, NULL, &tv);
 
-      r = select(fd + 1, &fds, NULL, NULL, &tv);
+    if (-1 == r) {
+      if (EINTR == errno) continue;
 
-      if (-1 == r) {
-        if (EINTR == errno) continue;
-
-        errno_exit("select");
-      }
-
-      if (0 == r) {
-        std::cerr << "select timeout\n";
-        exit(EXIT_FAILURE);
-      }
-
-      if (read_frame(GRAB_NUM_FRAMES - count)) break;
-
-      // EAGAIN - continue select loop.
+      errno_exit("select");
     }
+
+    if (0 == r) {
+      std::cerr << "select timeout\n";
+      exit(EXIT_FAILURE);
+    }
+
+    std::cout << "." << std::flush;
+
+    read_frame();
+    // EAGAIN - continue select loop.
   }
 }
 

@@ -44,7 +44,7 @@ DisplayManager::DisplayManager() {
   draw_buffer_.resize(1920 * 1200 * 4);
 
   // Log the GTK Version
-  std::cout << "SDL2 Version " << SDL_MAJOR_VERSION << "." << SDL_MINOR_VERSION << "." << SDL_PATCHLEVEL;
+  std::cout << "SDL2 Version " << SDL_MAJOR_VERSION << "." << SDL_MINOR_VERSION << "." << SDL_PATCHLEVEL << "\n";
 }
 
 DisplayManager::~DisplayManager() {
@@ -69,7 +69,8 @@ Status DisplayManager::Initalise() {
       std::cerr << "DISPLAY is not defined, cannot use SDL2";
       return Status::kError;
     }
-    std::cerr << "Unable to initalise SDL (" << "DISPLAY=" << std::getenv("DISPLAY") << "): " << SDL_GetError() << "\n";
+    std::cerr << "Unable to initalise SDL ("
+              << "DISPLAY=" << std::getenv("DISPLAY") << "): " << SDL_GetError() << "\n";
     // List SDL2 modes
     int displayIndex = 0;
     int displayModeCount = SDL_GetNumDisplayModes(displayIndex);
@@ -144,8 +145,8 @@ void DisplayManager::Run() {
       h = res.height;
       w = res.width;
     } else {
-      h = 480;
-      w = 640;
+      h = DEFAULT_HEIGHT;
+      w = DEFAULT_HEIGHT;
     }
     texr_ = {0, 0, w, h};  // rect to hold the texture's position and size
 
@@ -240,8 +241,14 @@ Status DisplayManager::DisplayBuffer(uint8_t *frame_buffer, Resolution resolutio
   // Fill the mask area with black, last kMaskBottomPixels at the bottom of the screen
   draw_buffer_.resize((width_ * 3) * (height_));
 
+  // Destroy the previous surface if it exists
+  if (surface_) {
+    SDL_FreeSurface(surface_);
+    surface_ = nullptr;
+  }
+
   // Create image from draw_buffer_.data()
-  surface_ = SDL_CreateRGBSurfaceFrom(draw_buffer_.data() /*pixels*/, width_, height_, 24, (width_) * 3, 0x000000FF,
+  surface_ = SDL_CreateRGBSurfaceFrom(draw_buffer_.data() /*pixels*/, width_, height_, 24, (width_)*3, 0x000000FF,
                                       0x0000FF00, 0x00FF0000, 0);
 
   // SDL create event, this will cause the screen to refresh

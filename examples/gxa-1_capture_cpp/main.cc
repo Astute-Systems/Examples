@@ -55,12 +55,23 @@ int main(int argc, char **argv) {
   io_method io = static_cast<io_method>(FLAGS_io_method);
   std::string video_standard = FLAGS_video_standard;
 
+  // Print summary of flags
+  std::cout << "Device: " << device << std::endl;
+  std::cout << "IO Method: " << io << std::endl;
+  std::cout << "Video Standard: " << video_standard << std::endl;
+
   try {
     VideoCapture capture(device, io, video_standard);
+    std::cout << "Starting video capture\n";
     capture.Start();
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
+  }
+
+  // Keep thread alive
+  while (true) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   return EXIT_SUCCESS;

@@ -12,7 +12,6 @@
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define WIDTH 720
 #define HEIGHT 576
-#define GRAB_NUM_FRAMES 100
 #define BYTESPERPIXEL 3  // for color
 
 typedef enum {
@@ -43,8 +42,8 @@ class VideoCapture {
   void errno_exit(const std::string &s);
   int xioctl(int fd, int request, void *arg);
   void yuv422_to_rgb(const uint8_t *yuv, uint8_t *rgb, int width, int height);
-  void process_image(const void *p, int frame);
-  int read_frame(int count);
+  void process_image(const void *p);
+  int read_frame();
   void mainloop();
   void stop_capturing();
   void start_capturing();
