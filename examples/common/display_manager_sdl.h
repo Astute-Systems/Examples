@@ -59,14 +59,15 @@ class DisplayManager : public DisplayManagerBase {
   /// \brief Initalise the display manager
   ///
   /// \return StatusDisplayManager
-  Status Initalise() override;
+  Status Initalise() final;
+  Status Initalise(uint32_t width, uint32_t height);
 
   ///
   /// \brief Get the Resolution attribute
   ///
   /// \return Resolution
   ///
-  Resolution GetResolution() override;
+  Resolution GetResolution() final;
 
   ///
   /// \brief Buffer must be in the format RGBA
@@ -75,30 +76,30 @@ class DisplayManager : public DisplayManagerBase {
   /// \param resolution the resolution of the frame buffer
   /// \return Status
   ///
-  Status DisplayBuffer(uint8_t *frame_buffer, Resolution resolution, std::string text) override;
+  Status DisplayBuffer(uint8_t *frame_buffer, Resolution resolution, std::string text) final;
 
   ///
   /// \brief Flush the framebuffer /dev/fb0
   ///
   ///
-  void Flush() override;
+  void Flush() final;
 
   ///
   /// \brief Toggle Fullscreen
   ///
   ///
-  void ToggleFullscreen() override;
+  void ToggleFullscreen() final;
 
   ///
   /// \brief Run the main event loop
   ///
-  void Run() override;
+  void Run() final;
 
   ///
   /// \brief Stop the main loop if there is one
   ///
   ///
-  void Stop() override;
+  void Stop() final;
 
   /// \brief The text to display
   static std::string text_;

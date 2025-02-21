@@ -62,7 +62,6 @@ int main(int argc, char **argv) {
 
   try {
     VideoCapture capture(device, io, video_standard);
-    std::cout << "Starting video capture\n";
     capture.Start();
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;

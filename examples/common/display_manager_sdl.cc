@@ -44,23 +44,26 @@ DisplayManager::DisplayManager() {
   draw_buffer_.resize(1920 * 1200 * 4);
 
   // Log the GTK Version
-  std::cout << "SDL2 Version " << SDL_MAJOR_VERSION << "." << SDL_MINOR_VERSION << "." << SDL_PATCHLEVEL << "\n";
+  // std::cout << "SDL2 Version " << SDL_MAJOR_VERSION << "." << SDL_MINOR_VERSION << "." << SDL_PATCHLEVEL << "\n";
 }
 
 DisplayManager::~DisplayManager() {
   running_ = false;
   SDL_Quit();
 }
+Status DisplayManager::Initalise() { return Initalise(DEFAULT_WIDTH, DEFAULT_HEIGHT); }
 
-Status DisplayManager::Initalise() {
+Status DisplayManager::Initalise(uint32_t width, uint32_t height) {
+  // Set the width and height
+  width_ = width;
+  height_ = height;
+
   int fullscreen;
   if (DEFAULT_FULLSCREEN) {
     fullscreen = SDL_WINDOW_FULLSCREEN_DESKTOP;
   } else {
     fullscreen = 0;
   }
-
-  std::cout << "Initialising display manager for SDL2\n";
 
   // Initalise the SDL
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -114,7 +117,6 @@ void DisplayManager::Run() {
   }
 
   renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
-  std::cout << "Created SDL renderer\n";
 
   if (!renderer_) {
     std::cerr << "Could not create renderer: " << SDL_GetError() << "\n";
@@ -123,8 +125,14 @@ void DisplayManager::Run() {
     exit(1);
   }
 
-  SDL_QueryTexture(texture_, NULL, NULL, &w, &h);  // get the width and height of the texture
-  std::cout << "Created SDL texture\n";
+  // Create the texture once
+  texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, width_, height_);
+  if (!texture_) {
+    std::cerr << "Could not create texture: " << SDL_GetError() << "\n";
+    SDL_DestroyRenderer(renderer_);
+    SDL_DestroyWindow(window_);
+    exit(1);
+  }
 
   // Main loop
   SDL_Event event;
@@ -134,41 +142,45 @@ void DisplayManager::Run() {
     else if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE)
       break;
 
-    texture_ = SDL_CreateTextureFromSurface(renderer_, surface_);
+    // Update the texture with the surface data
+    SDL_UpdateTexture(texture_, NULL, draw_buffer_.data(), width_ * 3);
 
-    // clear the screen
+    // Clear the screen
     SDL_RenderClear(renderer_);
-    SDL_QueryTexture(texture_, NULL, NULL, &w, &h);  // get the width and height of the texture
+
+    // Get the width and height of the texture
+    SDL_QueryTexture(texture_, NULL, NULL, &w, &h);
+
+    // Check keypress if 'f' or 'F' is pressed, toggle fullscreen
+    if (event.type == SDL_KEYUP && (event.key.keysym.sym == SDLK_f || event.key.keysym.sym == 'F')) {
+      ToggleFullscreen();
+    }
+
     if (DEFAULT_FULLSCREEN) {
-      // if fullscreen, set the width and height to the screen's width and height
+      // If fullscreen, set the width and height to the screen's width and height
       Resolution res = GetResolution();
       h = res.height;
       w = res.width;
     } else {
-      h = DEFAULT_HEIGHT;
-      w = DEFAULT_HEIGHT;
+      h = height_;
+      w = width_;
     }
-    texr_ = {0, 0, w, h};  // rect to hold the texture's position and size
 
-    // copy the texture to the rendering context, lock first
-    SDL_LockTexture(texture_, nullptr, nullptr, nullptr);
+    texr_ = {0, 0, w, h};  // Rect to hold the texture's position and size
+
+    // Copy the texture to the rendering context
     SDL_RenderCopy(renderer_, texture_, NULL, &texr_);
-    SDL_UnlockTexture(texture_);
 
-    // flip the back buffer
-    // this means that everything that we prepared behind the screens is actually shown
+    // Flip the back buffer
     SDL_RenderPresent(renderer_);
-    SDL_DestroyTexture(texture_);
   }
-  std::cout << "Exited SDL renderer loop\n";
 
+  if (texture_) SDL_DestroyTexture(texture_);
   if (renderer_) SDL_DestroyRenderer(renderer_);
   if (window_) SDL_DestroyWindow(window_);
 
   // Shutdown the application
   SDL_Quit();
-
-  std::cout << "Finished running display manager\n";
 
   // Generate sigint to self to handle cleanup.
   raise(SIGINT);
@@ -176,7 +188,6 @@ void DisplayManager::Run() {
 
 void DisplayManager::Stop() {
   // Stop the SDL2 application
-  std::cout << "Stopping SDL2 display manager event loop\n";
   SDL_QuitEvent event = {SDL_QUIT};
   SDL_PushEvent(reinterpret_cast<SDL_Event *>(&event));
 }

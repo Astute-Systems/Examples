@@ -23,13 +23,24 @@
 
 VideoCapture::VideoCapture(const std::string &device, io_method io, const std::string &video_standard)
     : dev_name(device), io(io), fd(-1), video_standard(video_standard) {
-  display.Initalise();
+  int height = HEIGHT;
+  int width = WIDTH;
+
+  // Set correct resolution based on standard
+  if (video_standard == "NTSC") {
+    height = 480;
+    width = 720;
+  } else if (video_standard == "PAL") {
+    height = 576;
+    width = 720;
+  }
+
+  display.Initalise(width, height);
   std::thread display_thread(&DisplayManager::Run, &display);
   display_thread.detach();
   open_device();
   init_device();
   start_capturing();
-  std::cout << "Stopping video capture\n";
 }
 
 VideoCapture::~VideoCapture() {
@@ -436,7 +447,6 @@ void VideoCapture::init_device() {
   // Select video input, video standard and tune here.
 
   // Reset Cropping
-  std::cout << "...reset cropping of " << dev_name << " ..." << std::endl;
   CLEAR(cropcap);
   cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
@@ -464,7 +474,6 @@ void VideoCapture::init_device() {
   sleep(1);
 
   // Select input
-  std::cout << "...select input channel of " << dev_name << " ..." << std::endl << std::endl;
   input = 0;  // Composite-0
   if (-1 == ioctl(fd, VIDIOC_S_INPUT, &input)) {
     perror("VIDIOC_S_INPUT");
@@ -478,7 +487,7 @@ void VideoCapture::init_device() {
   fmt.fmt.pix.width = WIDTH;
   fmt.fmt.pix.height = HEIGHT;
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-  if (BYTESPERPIXEL == 3)
+  if (BYTESPERPIXEL == 2)
     if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt)) errno_exit("VIDIOC_S_FMT");
 
   // Note VIDIOC_S_FMT may change width and height.
