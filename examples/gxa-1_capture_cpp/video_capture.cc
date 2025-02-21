@@ -1,21 +1,7 @@
-//
-// Copyright (c) 2025, Astute Systems PTY LTD
-//
-// This file is part of the VivoeX project developed by Astute Systems.
-//
-// Licensed under the Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
-// License. See the LICENSE file in the project root for full license details.
-//
-/// \brief An example of how to capture video on the GXA-1
-///
-/// mplayer tv:// -tv driver=v4l2:norm=PAL:device=/dev/video0
-///
-/// \file video_capture.cc
-///
+#include "video_capture.h"
 
 #include <asm/types.h>  // for videodev2.h
 #include <assert.h>
-#include <common/display_manager_sdl.h>
 #include <errno.h>
 #include <fcntl.h>   // low-level i/o
 #include <getopt.h>  // getopt_long()
@@ -26,55 +12,40 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <libswscale/swscale.h>
-#include <algorithm>  // for std::clamp
 
-#include <cstdlib>
+#include <algorithm>
 #include <iostream>
 #include <thread>
 
-#define CLEAR(x) memset(&(x), 0, sizeof(x))
+VideoCapture::VideoCapture(const std::string &device, io_method io)
+    : dev_name(device), io(io), fd(-1), buffers(nullptr), n_buffers(0) {
+  display.Initalise();
+  std::thread display_thread(&DisplayManager::Run, &display);
+  open_device();
+  init_device();
+  start_capturing();
+}
 
-#define WIDTH 720
-#define HEIGHT 576
-#define GRAB_NUM_FRAMES 100
-#define BYTESPERPIXEL 3  // for color
+VideoCapture::~VideoCapture() {
+  stop_capturing();
+  uninit_device();
+  close_device();
+  display.Stop();
+}
 
-typedef enum {
-  IO_METHOD_READ,
-  IO_METHOD_MMAP,
-  IO_METHOD_USERPTR,
-} io_method;
+void VideoCapture::Start() { mainloop(); }
 
-struct buffer {
-  void *start;
-  size_t length;
-};
+void VideoCapture::Stop() { stop_capturing(); }
 
-static char *dev_name = NULL;
-static io_method io = IO_METHOD_MMAP;
-static int fd = -1;
-struct buffer *buffers = NULL;
-static unsigned int n_buffers = 0;
-
-typedef struct {
-  int stride;
-  int width;
-  int height;
-} image_info_t;
-
-DisplayManager display;
-
-static void errno_exit(const char *s) {
+void VideoCapture::errno_exit(const char *s) {
   std::cerr << s << " error " << errno << ", " << strerror(errno) << std::endl;
 
   exit(EXIT_FAILURE);
 }
 
-static int xioctl(int fd, int request, void *arg) {
+int VideoCapture::xioctl(int fd, int request, void *arg) {
   int r;
 
   do r = ioctl(fd, request, arg);
@@ -83,41 +54,40 @@ static int xioctl(int fd, int request, void *arg) {
   return r;
 }
 
-static void yuv422_to_rgb(const uint8_t* yuv, uint8_t* rgb, int width, int height) {
-    int frameSize = width * height * 2;
-    int rgbIndex = 0;
+void VideoCapture::yuv422_to_rgb(const uint8_t *yuv, uint8_t *rgb, int width, int height) {
+  int frameSize = width * height * 2;
+  int rgbIndex = 0;
 
-    for (int i = 0; i < frameSize; i += 4) {
-        uint8_t y0 = yuv[i];
-        uint8_t u = yuv[i + 1];
-        uint8_t y1 = yuv[i + 2];
-        uint8_t v = yuv[i + 3];
+  for (int i = 0; i < frameSize; i += 4) {
+    uint8_t y0 = yuv[i];
+    uint8_t u = yuv[i + 1];
+    uint8_t y1 = yuv[i + 2];
+    uint8_t v = yuv[i + 3];
 
-        int c = y0 - 16;
-        int d = u - 128;
-        int e = v - 128;
+    int c = y0 - 16;
+    int d = u - 128;
+    int e = v - 128;
 
-        int r = (298 * c + 409 * e + 128) >> 8;
-        int g = (298 * c - 100 * d - 208 * e + 128) >> 8;
-        int b = (298 * c + 516 * d + 128) >> 8;
+    int r = (298 * c + 409 * e + 128) >> 8;
+    int g = (298 * c - 100 * d - 208 * e + 128) >> 8;
+    int b = (298 * c + 516 * d + 128) >> 8;
 
-        rgb[rgbIndex++] = std::clamp(r, 0, 255);
-        rgb[rgbIndex++] = std::clamp(g, 0, 255);
-        rgb[rgbIndex++] = std::clamp(b, 0, 255);
+    rgb[rgbIndex++] = std::clamp(r, 0, 255);
+    rgb[rgbIndex++] = std::clamp(g, 0, 255);
+    rgb[rgbIndex++] = std::clamp(b, 0, 255);
 
-        c = y1 - 16;
-        r = (298 * c + 409 * e + 128) >> 8;
-        g = (298 * c - 100 * d - 208 * e + 128) >> 8;
-        b = (298 * c + 516 * d + 128) >> 8;
+    c = y1 - 16;
+    r = (298 * c + 409 * e + 128) >> 8;
+    g = (298 * c - 100 * d - 208 * e + 128) >> 8;
+    b = (298 * c + 516 * d + 128) >> 8;
 
-        rgb[rgbIndex++] = std::clamp(r, 0, 255);
-        rgb[rgbIndex++] = std::clamp(g, 0, 255);
-        rgb[rgbIndex++] = std::clamp(b, 0, 255);
-    }
+    rgb[rgbIndex++] = std::clamp(r, 0, 255);
+    rgb[rgbIndex++] = std::clamp(g, 0, 255);
+    rgb[rgbIndex++] = std::clamp(b, 0, 255);
+  }
 }
 
-
-static void process_image(const void *p, int frame) {
+void VideoCapture::process_image(const void *p, int frame) {
   image_info_t info;
 
   // set up the image save( or if SDL, display to screen)
@@ -126,8 +96,8 @@ static void process_image(const void *p, int frame) {
   info.stride = info.width * BYTESPERPIXEL;
 
   // Convert YUV422 to RGB
-  uint8_t* rgb_buffer = (uint8_t*)malloc(WIDTH * HEIGHT * 3);
-  yuv422_to_rgb((const uint8_t*)p, rgb_buffer, WIDTH, HEIGHT);
+  uint8_t *rgb_buffer = (uint8_t *)malloc(WIDTH * HEIGHT * 3);
+  yuv422_to_rgb((const uint8_t *)p, rgb_buffer, WIDTH, HEIGHT);
 
   Resolution res = {info.width, info.height, 3};
   display.DisplayBuffer(rgb_buffer, res, "Video Capture");
@@ -135,7 +105,7 @@ static void process_image(const void *p, int frame) {
   free(rgb_buffer);
 }
 
-static int read_frame(int count) {
+int VideoCapture::read_frame(int count) {
   struct v4l2_buffer buf;
   unsigned int i;
 
@@ -225,7 +195,7 @@ static int read_frame(int count) {
   return 1;
 }
 
-static void mainloop(void) {
+void VideoCapture::mainloop() {
   unsigned int count;
 
   count = GRAB_NUM_FRAMES;
@@ -264,7 +234,7 @@ static void mainloop(void) {
   }
 }
 
-static void stop_capturing(void) {
+void VideoCapture::stop_capturing() {
   enum v4l2_buf_type type;
 
   switch (io) {
@@ -282,7 +252,7 @@ static void stop_capturing(void) {
   }
 }
 
-static void start_capturing(void) {
+void VideoCapture::start_capturing() {
   unsigned int i;
   enum v4l2_buf_type type;
 
@@ -332,13 +302,13 @@ static void start_capturing(void) {
   }
 }
 
-static void uninit_device(void) {
+void VideoCapture::uninit_device() {
   unsigned int i;
 
   switch (io) {
     case IO_METHOD_READ:
       free(buffers[0].start);
-       break;
+      break;
 
     case IO_METHOD_MMAP:
       for (i = 0; i < n_buffers; ++i)
@@ -353,7 +323,7 @@ static void uninit_device(void) {
   free(buffers);
 }
 
-static void init_read(unsigned int buffer_size) {
+void VideoCapture::init_read(unsigned int buffer_size) {
   buffers = (buffer *)calloc(1, sizeof(*buffers));
 
   if (!buffers) {
@@ -370,7 +340,7 @@ static void init_read(unsigned int buffer_size) {
   }
 }
 
-static void init_mmap(void) {
+void VideoCapture::init_mmap() {
   struct v4l2_requestbuffers req;
 
   CLEAR(req);
@@ -419,7 +389,7 @@ static void init_mmap(void) {
   }
 }
 
-static void init_userp(unsigned int buffer_size) {
+void VideoCapture::init_userp(unsigned int buffer_size) {
   struct v4l2_requestbuffers req;
 
   CLEAR(req);
@@ -455,7 +425,7 @@ static void init_userp(unsigned int buffer_size) {
   }
 }
 
-static void init_device(void) {
+void VideoCapture::init_device() {
   struct v4l2_capability cap;
   struct v4l2_cropcap cropcap;
   struct v4l2_crop crop;
@@ -573,16 +543,16 @@ static void init_device(void) {
   }
 }
 
-static void close_device(void) {
+void VideoCapture::close_device() {
   if (-1 == close(fd)) errno_exit("close");
 
   fd = -1;
 }
 
-static void open_device(void) {
+void VideoCapture::open_device() {
   struct stat st;
 
-  if (-1 == stat(dev_name, &st)) {
+  if (-1 == stat(dev_name.c_str(), &st)) {
     std::cerr << "Cannot identify '" << dev_name << "': " << errno << ", " << strerror(errno) << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -592,113 +562,10 @@ static void open_device(void) {
     exit(EXIT_FAILURE);
   }
 
-  fd = open(dev_name, O_RDWR /* required */ | O_NONBLOCK, 0);
+  fd = open(dev_name.c_str(), O_RDWR /* required */ | O_NONBLOCK, 0);
 
   if (-1 == fd) {
     std::cerr << "Cannot open '" << dev_name << "': " << errno << ", " << strerror(errno) << std::endl;
     exit(EXIT_FAILURE);
   }
-}
-
-static void usage(FILE *fp, int argc, char **argv) {
-  fprintf(fp,
-          "Usage: %s [options]\n\n"
-          "Options:\n"
-          "-d | --device name   Video device name [/dev/video]\n"
-          "-h | --help          Print this message\n"
-          "-m | --mmap          Use memory mapped buffers\n"
-          "-r | --read          Use read() calls\n"
-          "-u | --userp         Use application allocated buffers\n"
-          "\n",
-          argv[0]);
-}
-
-static const char short_options[] = "d:hmru";
-
-static const struct option long_options[] = {{"device", required_argument, NULL, 'd'}, {"help", no_argument, NULL, 'h'},
-                                             {"mmap", no_argument, NULL, 'm'},         {"read", no_argument, NULL, 'r'},
-                                             {"userp", no_argument, NULL, 'u'},        {0, 0, 0, 0}};
-
-int main(int argc, char **argv) {
-  dev_name = "/dev/video0";
-
-  display.Initalise();
-  
-  // Run in thread display.Run()
-  std::thread display_thread(&DisplayManager::Run, &display);
-
-  // Test
-  uint8_t *buf = (uint8_t *)malloc(720 * 576 * 4);
-
-  for (int i = 0; i < 720 * 576 * 4; i++) buf[i] = 0xaa;
-  Resolution res = {720, 576};
-  display.DisplayBuffer((uint8_t *)buf, res, "Video Capture");
-
-  for (;;) {
-    int index;
-    int c;
-
-    c = getopt_long(argc, argv, short_options, long_options, &index);
-
-    if (-1 == c) break;
-
-    switch (c) {
-      case 0:  // getopt_long() flag
-        // break;
-        {
-          usage(stderr, argc, argv);
-          exit(EXIT_FAILURE);
-        }
-
-      case 'd':
-        dev_name = optarg;
-        break;
-
-      case 'h':
-        usage(stdout, argc, argv);
-        exit(EXIT_SUCCESS);
-
-      case 'm':
-        io = IO_METHOD_MMAP;
-        break;
-
-      case 'r':
-        io = IO_METHOD_READ;
-        break;
-
-      case 'u':
-        io = IO_METHOD_USERPTR;
-        break;
-
-      default:
-        usage(stderr, argc, argv);
-        exit(EXIT_FAILURE);
-    }
-  }
-
-  open_device();
-
-  std::cout << "...device opened..." << std::endl;
-  init_device();
-
-  std::cout << "...device initialized..." << std::endl;
-  start_capturing();
-
-  std::cout << "...device capturing..." << std::endl;
-  mainloop();
-
-  std::cout << "...device capturing stopped..." << std::endl;
-  stop_capturing();
-
-  std::cout << "...device capturing stopped..." << std::endl;
-  uninit_device();
-
-  std::cout << "...device uninitialized..." << std::endl;
-  close_device();
-
-  display.Stop();
-
-  exit(EXIT_SUCCESS);
-
-  return 0;
 }

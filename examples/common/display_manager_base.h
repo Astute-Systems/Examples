@@ -32,9 +32,9 @@ enum class Status { kSuccess, kFailure, kError };
 
 // The resolution struct
 struct Resolution {
-  uint32_t width;
-  uint32_t height;
-  uint32_t bpp;
+  int width;
+  int height;
+  int bpp;
 };
 
 /// The display manager class

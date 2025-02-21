@@ -18,7 +18,7 @@
  *		Compiling:
  *				gcc [-g] -o sx1xCapYUYV sx1xCapYUYV.c
  *
- *		Switching:	bewteen 16-bit YUYV color image capturing and 8-bit Gray-scale image capturing:
+ *		Switching:	between 16-bit YUYV color image capturing and 8-bit Gray-scale image capturing:
  *                              In the code below, enable "#define BYTESPERPIXEL 3" and comment-out
  *                              "#define BYTESPERPIXEL 1" for 24-bit RGB color image capturing; Or,
  *				comment-out "#define BYTESPERPIXEL 3" and enable "#define BYTESPERPIXEL 1"
@@ -570,7 +570,7 @@ static void init_device(void) {
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   fmt.fmt.pix.width = WIDTH;
   fmt.fmt.pix.height = HEIGHT;
-  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; 
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24; */
   if (BYTESPERPIXEL == 3)
     /* fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_BGR24;
@@ -781,7 +781,7 @@ int main(int argc, char **argv) {
   /* dev_name = "/dev/video5"; */ /* Device-#6 */
   /* dev_name = "/dev/video6"; */ /* Device-#7 */
   /* dev_name = "/dev/video7"; */ /* Device-#8 */
-  /*  Device menetioned above implies: */
+  /*  Device mentioned above implies: */
   //		Board for 614/314/611/311, or */
   /*       Channel for 811/911: */
   //			(#1~4 for 1st Board; #5~8 for 2nd Board) */
@@ -843,7 +843,7 @@ int main(int argc, char **argv) {
   printf("Stopping capture\n");
   stop_capturing();
 
-  printf("Uninitializing device\n");
+  printf("Uninitializeing device\n");
   uninit_device();
 
   printf("Closing device\n");

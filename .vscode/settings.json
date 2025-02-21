@@ -6,21 +6,27 @@
         "gflags",
         "gpioctl",
         "gpiod",
+        "greyscale",
         "gstreamer",
+        "hmru",
         "Initalise",
         "ledoff",
         "ledon",
         "libgflags",
         "libgpiod",
+        "libsdl",
         "MEDIAX",
+        "NTSC",
+        "ppmheader",
         "QBUF",
         "STREAMON",
         "VIDIOC",
         "xioctl",
         "YUYV"
     ],
+    "cmake.configureOnOpen": false,
+    "C_Cpp.clang_format_path": "/usr/bin/clang-format",
     "editor.formatOnSave": true,
-    "editor.formatOnPaste": false,
     "C_Cpp.clang_format_fallbackStyle": "{BasedOnStyle: Google, ColumnLimit: 120}",
     "files.associations": {
         "display_manager_sdl.h": "c",
@@ -80,6 +86,5 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp"
     },
-    "C_Cpp.clang_format_path": "/usr/bin",
     "C_Cpp.clang_format_sortIncludes": true
 }
