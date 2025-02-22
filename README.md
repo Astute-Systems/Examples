@@ -1,5 +1,8 @@
 # Examples
 
+[![Doxygen](https://github.com/Astute-Systems/Examples/actions/workflows/build-doxygen.yaml/badge.svg)](https://github.com/Astute-Systems/Examples/actions/workflows/build-doxygen.yaml)
+[![Ubuntu 22.04 Intel](https://github.com/Astute-Systems/Examples/actions/workflows/build-ubuntu-22.04-amd64.yaml/badge.svg)](https://github.com/Astute-Systems/Examples/actions/workflows/build-ubuntu-22.04-amd64.yaml)
+
 A collection of code examples for use by customer
 
 | Example          | Description                                                 |
@@ -8,6 +11,10 @@ A collection of code examples for use by customer
 | capture_c        | GXA-1 capture analogue video example in C                   |
 | capture_cpp      | GXA-1 capture analogue video example in C++ with SDL render |
 | as-gpioctl       | GXA-1 example gpio control                                  |
+
+## Documentation
+
+The doxygen documentation can be found on the public facing Github pages [https://astute-systems.github.io/Examples/](here).
 
 ## Building
 
