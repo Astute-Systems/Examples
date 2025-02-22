@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <fcntl.h>   // low-level i/o
 #include <getopt.h>  // getopt_long()
+#include <gflags/gflags.h>
 #include <linux/videodev2.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,6 +34,9 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+
+// Indicate if the video processing is interlaced
+DEFINE_bool(interlaced, false, "Interlaced video");
 
 VideoCapture::VideoCapture(const std::string &device, io_method io, const std::string &video_standard)
     : dev_name(device), io(io), fd(-1), video_standard(video_standard) {
@@ -497,7 +501,11 @@ void VideoCapture::init_device() {
   fmt.fmt.pix.width = width;
   fmt.fmt.pix.height = height;
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-  fmt.fmt.pix.field = V4L2_FIELD_TOP;
+  if (FLAGS_interlaced) {
+    fmt.fmt.pix.field = V4L2_FIELD_TOP;
+    // Interlaces so height is halved
+    fmt.fmt.pix.height = height / 2;
+  }
   if (BYTESPERPIXEL == 2)
     if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt)) errno_exit("VIDIOC_S_FMT");
 

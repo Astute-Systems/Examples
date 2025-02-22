@@ -8,7 +8,7 @@
 //
 /// \brief A tool to manage the GPIO pins on the GXA-1
 ///
-/// \file gpioctl.cc
+/// \file video_capture.h
 ///
 
 #ifndef VIDEO_CAPTURE_H

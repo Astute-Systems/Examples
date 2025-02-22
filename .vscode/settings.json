@@ -16,6 +16,7 @@
         "libgpiod",
         "libsdl",
         "MEDIAX",
+        "mplayer",
         "NTSC",
         "ppmheader",
         "QBUF",
