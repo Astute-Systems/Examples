@@ -14,7 +14,7 @@ A collection of code examples for use by customer
 
 ## Documentation
 
-The doxygen documentation can be found on the public facing Github pages [https://astute-systems.github.io/Examples/](here).
+The doxygen documentation can be found on the public facing Github pages [here](https://astute-systems.github.io/Examples/).
 
 ## Building
 
