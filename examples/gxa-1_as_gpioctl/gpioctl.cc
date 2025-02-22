@@ -20,22 +20,33 @@
 
 #include <iostream>
 
+/// \brief Flag to turn the LED on
 DEFINE_bool(ledon, false, "Turn the BIT LED on");
+/// \brief Flag to turn the LED off
 DEFINE_bool(ledoff, false, "Turn the bit LED off");
+/// \brief Flag to turn off additional output
 DEFINE_bool(quiet, false, "No additional output");
+/// \brief Flag to get information on GPIO and devices
 DEFINE_bool(info, false, "Information on GPIO and devices");
+/// \brief Flag to wait for a number of seconds
 DEFINE_int64(wait, 0, "Number of seconds to wait");
 
-// Signal interrupt handler
+///
+/// \brief Signal interrupt handler
+///
+/// \param signum The signal number
+///
 void signal_handler(int signum) {
   std::cerr << "Closing device\n";
   exit(signum);
 }
 
 #ifndef CONSUMER
+/// \brief The consumer name
 #define CONSUMER "Consumer"
 #endif
 
+/// \brief Main function
 int main(int argc, char **argv) {
   std::cout << "GXA-1 GPIO control\n";
 

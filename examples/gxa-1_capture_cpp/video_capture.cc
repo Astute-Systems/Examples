@@ -36,8 +36,18 @@
 
 VideoCapture::VideoCapture(const std::string &device, io_method io, const std::string &video_standard)
     : dev_name(device), io(io), fd(-1), video_standard(video_standard) {
-  display.Initalise();
+  // Set correct resolution based on standard
+  if (video_standard == "NTSC") {
+    height = 480;
+    width = 720;
+  } else if (video_standard == "PAL") {
+    height = 576;
+    width = 720;
+  }
+
+  display.Initalise(width, height, "Capture " + video_standard);
   std::thread display_thread(&DisplayManager::Run, &display);
+  display_thread.detach();
   open_device();
   init_device();
   start_capturing();
@@ -100,23 +110,23 @@ void VideoCapture::yuv422_to_rgb(const uint8_t *yuv, uint8_t *rgb, int width, in
   }
 }
 
-void VideoCapture::process_image(const void *p, int frame) {
+void VideoCapture::process_image(const void *p) {
   image_info_t info;
 
   // set up the image save( or if SDL, display to screen)
-  info.width = WIDTH;
-  info.height = HEIGHT;
+  info.width = width;
+  info.height = height;
   info.stride = info.width * BYTESPERPIXEL;
 
   // Convert YUV422 to RGB
-  std::vector<uint8_t> rgb_buffer(WIDTH * HEIGHT * 3);
-  yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), WIDTH, HEIGHT);
+  std::vector<uint8_t> rgb_buffer(width * height * 3);
+  yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), width, height);
 
   Resolution res = {info.width, info.height, 3};
   display.DisplayBuffer(rgb_buffer.data(), res, "Video Capture");
 }
 
-int VideoCapture::read_frame(int count) {
+int VideoCapture::read_frame() {
   struct v4l2_buffer buf;
   unsigned int i;
 
@@ -137,7 +147,7 @@ int VideoCapture::read_frame(int count) {
         }
       }
 
-      process_image(buffers[0].start, count);
+      process_image(buffers[0].start);
 
       break;
 
@@ -164,7 +174,7 @@ int VideoCapture::read_frame(int count) {
 
       assert(buf.index < buffers.size());
 
-      process_image(buffers[buf.index].start, count);
+      process_image(buffers[buf.index].start);
 
       if (-1 == xioctl(fd, VIDIOC_QBUF, &buf)) errno_exit("VIDIOC_QBUF");
 
@@ -196,7 +206,7 @@ int VideoCapture::read_frame(int count) {
 
       assert(i < buffers.size());
 
-      process_image((void *)buf.m.userptr, count);
+      process_image((void *)buf.m.userptr);
 
       if (-1 == xioctl(fd, VIDIOC_QBUF, &buf)) errno_exit("VIDIOC_QBUF");
 
@@ -207,38 +217,35 @@ int VideoCapture::read_frame(int count) {
 }
 
 void VideoCapture::mainloop() {
-  unsigned int count = GRAB_NUM_FRAMES;
+  for (;;) {
+    fd_set fds;
+    struct timeval tv;
+    int r;
 
-  while (count-- > 0) {
-    for (;;) {
-      fd_set fds;
-      struct timeval tv;
-      int r;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
 
-      FD_ZERO(&fds);
-      FD_SET(fd, &fds);
+    // Timeout
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
 
-      // Timeout
-      tv.tv_sec = 2;
-      tv.tv_usec = 0;
+    r = select(fd + 1, &fds, NULL, NULL, &tv);
 
-      r = select(fd + 1, &fds, NULL, NULL, &tv);
+    if (-1 == r) {
+      if (EINTR == errno) continue;
 
-      if (-1 == r) {
-        if (EINTR == errno) continue;
-
-        errno_exit("select");
-      }
-
-      if (0 == r) {
-        std::cerr << "select timeout\n";
-        exit(EXIT_FAILURE);
-      }
-
-      if (read_frame(GRAB_NUM_FRAMES - count)) break;
-
-      // EAGAIN - continue select loop.
+      errno_exit("select");
     }
+
+    if (0 == r) {
+      std::cerr << "select timeout\n";
+      exit(EXIT_FAILURE);
+    }
+
+    std::cout << "." << std::flush;
+
+    read_frame();
+    // EAGAIN - continue select loop.
   }
 }
 
@@ -450,7 +457,6 @@ void VideoCapture::init_device() {
   // Select video input, video standard and tune here.
 
   // Reset Cropping
-  std::cout << "...reset cropping of " << dev_name << " ..." << std::endl;
   CLEAR(cropcap);
   cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
@@ -478,7 +484,6 @@ void VideoCapture::init_device() {
   sleep(1);
 
   // Select input
-  std::cout << "...select input channel of " << dev_name << " ..." << std::endl << std::endl;
   input = 0;  // Composite-0
   if (-1 == ioctl(fd, VIDIOC_S_INPUT, &input)) {
     perror("VIDIOC_S_INPUT");
@@ -489,11 +494,11 @@ void VideoCapture::init_device() {
   CLEAR(fmt);
 
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  fmt.fmt.pix.width = WIDTH;
-  fmt.fmt.pix.height = HEIGHT;
+  fmt.fmt.pix.width = width;
+  fmt.fmt.pix.height = height;
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   fmt.fmt.pix.field = V4L2_FIELD_TOP;
-  if (BYTESPERPIXEL == 3)
+  if (BYTESPERPIXEL == 2)
     if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt)) errno_exit("VIDIOC_S_FMT");
 
   // Note VIDIOC_S_FMT may change width and height.

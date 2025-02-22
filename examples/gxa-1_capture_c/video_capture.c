@@ -60,8 +60,11 @@ typedef enum {
   IO_METHOD_USERPTR,
 } io_method;
 
+/// \brief The buffer structure
 struct buffer {
+  /// \brief The start of the buffer
   void *start;
+  /// \brief The length of the buffer
   size_t length;
 };
 
@@ -71,9 +74,13 @@ static int fd = -1;
 struct buffer *buffers = NULL;
 static unsigned int n_buffers = 0;
 
+/// \brief The video image
 typedef struct {
+  /// \brief The stride of the image
   int stride;
+  /// \brief The width of the image
   int width;
+  /// \brief The height of the image
   int height;
 } image_info_t;
 
@@ -245,9 +252,7 @@ static int read_frame(int count) {
 static void mainloop(void) {
   unsigned int count;
 
-  count = GRAB_NUM_FRAMES;
-
-  while (count-- > 0) {
+  while (1) {
     for (;;) {
       fd_set fds;
       struct timeval tv;

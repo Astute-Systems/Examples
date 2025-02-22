@@ -30,10 +30,13 @@
 /// Status enum
 enum class Status { kSuccess, kFailure, kError };
 
-// The resolution struct
+/// The resolution struct
 struct Resolution {
+  /// \brief The width of the resolution
   int width;
+  /// \brief The height of the resolution
   int height;
+  /// \brief The bits per pixel
   int bpp;
 };
 

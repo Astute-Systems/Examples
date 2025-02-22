@@ -11,7 +11,7 @@ A collection of code examples for use by customer
 
 ## Building
 
-To build a specific example, select a test from the table above and run. Run ```./scripts/init_build_machine.sh``` to satisfy the dependancies.
+To build a specific example, select a test from the table above and run. Run ```./scripts/init_build_machine.sh``` to satisfy the dependencies.
 
 ``` .bash
 mkdir build && cd build

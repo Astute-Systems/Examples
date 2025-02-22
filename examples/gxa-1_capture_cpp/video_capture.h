@@ -25,7 +25,6 @@
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define WIDTH 720
 #define HEIGHT 576
-#define GRAB_NUM_FRAMES 100
 #define BYTESPERPIXEL 3  // for color
 
 typedef enum {
@@ -34,17 +33,25 @@ typedef enum {
   IO_METHOD_USERPTR,
 } io_method;
 
+/// \brief A buffer
 struct buffer {
+  /// \brief The start of the buffer
   void *start;
+  /// \brief The length of the buffer
   size_t length;
 };
 
+/// \brief The video image
 typedef struct {
+  /// \brief The stride of the image
   int stride;
+  /// \brief The width of the image
   int width;
+  /// \brief The height of the image
   int height;
 } image_info_t;
 
+/// \brief Video capture class
 class VideoCapture {
  public:
   VideoCapture(const std::string &device, io_method io, const std::string &video_standard);
@@ -86,7 +93,7 @@ class VideoCapture {
   /// \param p The image buffer
   /// \param frame The frame number
   ///
-  void process_image(const void *p, int frame);
+  void process_image(const void *p);
 
   ///
   /// \brief Read a frame from the video device
@@ -94,7 +101,7 @@ class VideoCapture {
   /// \param count The frame count
   /// \return 1 if a frame was read, 0 otherwise
   ///
-  int read_frame(int count);
+  int read_frame();
 
   ///
   /// \brief Main loop for capturing video
@@ -157,6 +164,8 @@ class VideoCapture {
   ///
   void set_video_standard(const std::string &video_standard);
 
+  int height;
+  int width;
   std::string dev_name;
   io_method io;
   int fd;
