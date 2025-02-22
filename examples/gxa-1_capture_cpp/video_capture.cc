@@ -1,3 +1,16 @@
+//
+// Copyright (c) 2025, Astute Systems PTY LTD
+//
+// This file is part of the GXA-1 product developed by Astute Systems.
+//
+// Licensed under the MIT License. See the LICENSE file in the project root for full license
+// details.
+//
+/// \brief A tool to manage the GPIO pins on the GXA-1
+///
+/// \file gpioctl.cc
+///
+
 #include "video_capture.h"
 
 #include <asm/types.h>  // for videodev2.h
@@ -479,6 +492,7 @@ void VideoCapture::init_device() {
   fmt.fmt.pix.width = WIDTH;
   fmt.fmt.pix.height = HEIGHT;
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+  fmt.fmt.pix.field = V4L2_FIELD_TOP;
   if (BYTESPERPIXEL == 3)
     if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt)) errno_exit("VIDIOC_S_FMT");
 
