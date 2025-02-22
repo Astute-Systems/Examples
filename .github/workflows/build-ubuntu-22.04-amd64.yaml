@@ -1,0 +1,42 @@
+name: "Ubuntu 22.04 Intel"
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:22.04
+
+    # Map a step output to a job output
+    outputs:
+      package_name: ${{ steps.package.outputs.DEB_PACKAGE }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Apt Update
+        run: |
+          apt-get update
+
+      - name: Setup CA certificates
+        run: |
+          apt-get install -y ca-certificates
+
+      - name: Apt Install
+        run: |
+          ./scripts/init_build_machine.sh
+
+      - name: CMake and Build
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
+
