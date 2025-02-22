@@ -9,4 +9,4 @@ fi
 # Build tools
 apt-get install -y build-essential cmake
 # Install SDL2 and SDL Image
-apt-get install -y libsdl2-dev libsdl2-image-dev libgpiod-dev libgflags-dev
+apt-get install -y libsdl2-dev libsdl2-image-dev libgpiod-dev libgflags-dev libswscale-dev
