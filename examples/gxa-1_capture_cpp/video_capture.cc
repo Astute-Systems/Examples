@@ -35,6 +35,11 @@
 #include <thread>
 #include <vector>
 
+// swscale
+extern "C" {
+#include <libswscale/swscale.h>
+}
+
 // Indicate if the video processing is interlaced
 DEFINE_bool(interlaced, false, "Interlaced video");
 
@@ -48,6 +53,12 @@ VideoCapture::VideoCapture(const std::string &device, io_method io, const std::s
     height = 576;
     width = 720;
   }
+
+  // Print if interlaced
+  if (FLAGS_interlaced)
+    std::cout << "Interlaced video" << std::endl;
+  else
+    std::cout << "Progressive video" << std::endl;
 
   display.Initalise(width, height, "Capture " + video_standard);
   std::thread display_thread(&DisplayManager::Run, &display);
@@ -126,8 +137,25 @@ void VideoCapture::process_image(const void *p) {
   std::vector<uint8_t> rgb_buffer(width * height * 3);
   yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), width, height);
 
-  Resolution res = {info.width, info.height, 3};
-  display.DisplayBuffer(rgb_buffer.data(), res, "Video Capture");
+  if (FLAGS_interlaced) {
+    // Use swscale to scale the RGB mage 2 * height
+    SwsContext *sws_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height * 2, AV_PIX_FMT_RGB24,
+                                         SWS_BILINEAR, NULL, NULL, NULL);
+    std::vector<uint8_t> scaled_rgb_buffer(width * height * 3 * 2);
+    uint8_t *srcSlice[] = {rgb_buffer.data()};
+    int srcStride[] = {info.width * 3};
+    uint8_t *dstSlice[] = {scaled_rgb_buffer.data()};
+
+    sws_scale(sws_ctx, srcSlice, srcStride, 0, height, dstSlice, srcStride);
+    sws_freeContext(sws_ctx);
+
+    Resolution res = {info.width, info.height, 3};
+    display.DisplayBuffer(scaled_rgb_buffer.data(), res, "Video Capture");
+
+  } else {
+    Resolution res = {info.width, info.height, 3};
+    display.DisplayBuffer(rgb_buffer.data(), res, "Video Capture");
+  }
 }
 
 int VideoCapture::read_frame() {

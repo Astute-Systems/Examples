@@ -25,7 +25,7 @@
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define WIDTH 720
 #define HEIGHT 576
-#define BYTESPERPIXEL 3  // for color
+#define BYTESPERPIXEL 2  // for color
 
 typedef enum {
   IO_METHOD_READ,
