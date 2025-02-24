@@ -35,7 +35,6 @@
 #include <thread>
 #include <vector>
 
-// swscale
 extern "C" {
 #include <libswscale/swscale.h>
 }

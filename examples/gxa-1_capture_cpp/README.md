@@ -10,6 +10,13 @@ Press <kbd>f</kbd> to switch to fullscreen
 ./bin/capture_cpp -io_method 1 -device /dev/video0 -video_standard=PAL
 ```
 
+for Interlaced
+
+```
+./bin/capture_cpp -io_method 1 -device /dev/video0 -video_standard=PAL -interlaced
+```
+ > NOTE: In interlaced mode each frame is scaled using swscale SWS_BILINEAR interpolation see [here](https://ffmpeg.org/doxygen/6.1/group__libsws.html). This is not a deinterlcing algorithm but designed for speed. Outputs at 50 FPS with some minor flicker (TODO).
+
 ## NTSC TV standard
 
 ```
