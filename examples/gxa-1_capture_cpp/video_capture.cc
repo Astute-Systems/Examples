@@ -43,6 +43,10 @@ extern "C" {
 // Indicate if the video processing is interlaced
 DEFINE_bool(interlaced, false, "Interlaced video");
 
+int count = 0;
+// Timestamp
+struct timeval start, end;
+
 VideoCapture::VideoCapture(const std::string &device, io_method io, const std::string &video_standard)
     : dev_name(device), io(io), fd(-1), video_standard(video_standard) {
   // Set correct resolution based on standard
@@ -66,6 +70,7 @@ VideoCapture::VideoCapture(const std::string &device, io_method io, const std::s
   open_device();
   init_device();
   start_capturing();
+  gettimeofday(&start, NULL);
 }
 
 VideoCapture::~VideoCapture() {
@@ -133,26 +138,26 @@ void VideoCapture::process_image(const void *p) {
   info.height = height;
   info.stride = info.width * BYTESPERPIXEL;
 
-  // Convert YUV422 to RGB
-  std::vector<uint8_t> rgb_buffer(width * height * 3);
-  yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), width, height);
-
   if (FLAGS_interlaced) {
-    // Use swscale to scale the RGB mage 2 * height
-    SwsContext *sws_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height * 2, AV_PIX_FMT_RGB24,
+    // Use swscale to scale the RGB image to 2 * height
+    SwsContext *sws_ctx = sws_getContext(width, height / 2, AV_PIX_FMT_YUYV422, width, height, AV_PIX_FMT_RGB24,
                                          SWS_BILINEAR, NULL, NULL, NULL);
-    std::vector<uint8_t> scaled_rgb_buffer(width * height * 3 * 2);
-    uint8_t *srcSlice[] = {rgb_buffer.data()};
-    int srcStride[] = {info.width * 3};
+    std::vector<uint8_t> scaled_rgb_buffer(width * height * 3);
+    uint8_t *srcSlice[] = {(uint8_t *)p};
+    int srcStride[] = {info.width * 2};
     uint8_t *dstSlice[] = {scaled_rgb_buffer.data()};
+    int dstStride[] = {info.width * 3};
 
-    sws_scale(sws_ctx, srcSlice, srcStride, 0, height, dstSlice, srcStride);
+    sws_scale(sws_ctx, srcSlice, srcStride, 0, height / 2, dstSlice, dstStride);
     sws_freeContext(sws_ctx);
 
     Resolution res = {info.width, info.height, 3};
     display.DisplayBuffer(scaled_rgb_buffer.data(), res, "Video Capture");
 
   } else {
+    // Convert YUV422 to RGB
+    std::vector<uint8_t> rgb_buffer(width * height * 3);
+    yuv422_to_rgb((const uint8_t *)p, rgb_buffer.data(), width, height);
     Resolution res = {info.width, info.height, 3};
     display.DisplayBuffer(rgb_buffer.data(), res, "Video Capture");
   }
@@ -274,7 +279,18 @@ void VideoCapture::mainloop() {
       exit(EXIT_FAILURE);
     }
 
+#if 0
     std::cout << "." << std::flush;
+#else
+    count++;
+    // Reset count every one second and print it out
+    gettimeofday(&end, NULL);
+    if (end.tv_sec - start.tv_sec >= 1) {
+      std::cout << "FPS: " << count << "\r" << std::flush;
+      count = 0;
+      gettimeofday(&start, NULL);
+    }
+#endif
 
     read_frame();
     // EAGAIN - continue select loop.
@@ -530,7 +546,7 @@ void VideoCapture::init_device() {
   fmt.fmt.pix.height = height;
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   if (FLAGS_interlaced) {
-    fmt.fmt.pix.field = V4L2_FIELD_TOP;
+    fmt.fmt.pix.field = V4L2_FIELD_ALTERNATE;
     // Interlaces so height is halved
     fmt.fmt.pix.height = height / 2;
   }
