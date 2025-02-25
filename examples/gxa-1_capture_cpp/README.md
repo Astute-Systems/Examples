@@ -25,11 +25,11 @@ Progressing video @25 FPS
 
 ![Interlaced](../../images/PAL_Interlaced.png)
 
-** Interlaced video using interpolation to 'fill in' the missing lines **
+**Interlaced video using interpolation to 'fill in' the missing lines**
 
 ![Progressive](../../images/PAL_Progressive.png)
 
-** Progressive video lines interleaved, no deinterlacing algorithm applied **
+**Progressive video lines interleaved, no deinterlacing algorithm applied**
 
 ## NTSC TV standard
 
