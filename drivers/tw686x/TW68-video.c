@@ -1561,7 +1561,12 @@ void TW68_video_irq(struct TW68_dev *dev, unsigned long requests, unsigned int p
 				buf->vb.v4l2_buf.field = vc->field;
 				buf->vb.v4l2_buf.sequence = vc->framecount;
 #else
-				buf->vb.field = vc->field;
+				// buf->vb.field = vc->field;
+				if (Fn == 0)
+					buf->vb.field = V4L2_FIELD_TOP;
+				else
+					buf->vb.field = V4L2_FIELD_BOTTOM;
+
 				buf->vb.sequence = vc->framecount;
 #endif
 				vc->framecount++;

@@ -57,13 +57,20 @@ VideoCapture::VideoCapture(const std::string &device, io_method io, const std::s
     width = 720;
   }
 
+  std::string type = "";
+  if (FLAGS_interlaced) {
+    type = "Interlaced";
+  } else {
+    type = "Progressive";
+  }
+
   // Print if interlaced
   if (FLAGS_interlaced)
     std::cout << "Interlaced video" << std::endl;
   else
     std::cout << "Progressive video" << std::endl;
 
-  display.Initalise(width, height, "Capture " + video_standard);
+  display.Initalise(width, height, "Capture " + video_standard + " (" + type + ")");
   std::thread display_thread(&DisplayManager::Run, &display);
   display_thread.detach();
   open_device();
@@ -129,7 +136,7 @@ void VideoCapture::yuv422_to_rgb(const uint8_t *yuv, uint8_t *rgb, int width, in
   }
 }
 
-void VideoCapture::process_image(const void *p) {
+void VideoCapture::process_image(const void *p, int field) {
   image_info_t info;
 
   // set up the image save( or if SDL, display to screen)
@@ -138,11 +145,16 @@ void VideoCapture::process_image(const void *p) {
   info.stride = info.width * BYTESPERPIXEL;
 
   if (FLAGS_interlaced) {
+    int offset = 0;
+    if (field == V4L2_FIELD_TOP) {
+      // Start one line down
+      offset = info.width * BYTESPERPIXEL;
+    }
     // Use swscale to scale the RGB image to 2 * height
     SwsContext *sws_ctx = sws_getContext(width, height / 2, AV_PIX_FMT_YUYV422, width, height, AV_PIX_FMT_RGB24,
                                          SWS_BILINEAR, NULL, NULL, NULL);
     std::vector<uint8_t> scaled_rgb_buffer(width * height * 3);
-    uint8_t *srcSlice[] = {(uint8_t *)p};
+    uint8_t *srcSlice[] = {(uint8_t *)p + offset};
     int srcStride[] = {info.width * 2};
     uint8_t *dstSlice[] = {scaled_rgb_buffer.data()};
     int dstStride[] = {info.width * 3};
@@ -183,11 +195,14 @@ int VideoCapture::read_frame() {
         }
       }
 
-      process_image(buffers[0].start);
+      process_image(buffers[0].start, 0);
 
       break;
 
-    case IO_METHOD_MMAP:
+    case IO_METHOD_MMAP: {
+      // Check if the buffer is TOP or BOTTOM
+      int field = V4L2_FIELD_ANY;
+
       CLEAR(buf);
 
       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -210,11 +225,17 @@ int VideoCapture::read_frame() {
 
       assert(buf.index < buffers.size());
 
-      process_image(buffers[buf.index].start);
+      if (buf.field == V4L2_FIELD_TOP) {
+        field = V4L2_FIELD_TOP;
+      } else if (buf.field == V4L2_FIELD_BOTTOM) {
+        field = V4L2_FIELD_BOTTOM;
+      }
+      // std::cout << "Field: " << (buf.field == V4L2_FIELD_TOP ? "TOP" : "BOTTOM") << std::endl;
+
+      process_image(buffers[buf.index].start, field);
 
       if (-1 == xioctl(fd, VIDIOC_QBUF, &buf)) errno_exit("VIDIOC_QBUF");
-
-      break;
+    } break;
 
     case IO_METHOD_USERPTR:
       CLEAR(buf);
@@ -242,7 +263,7 @@ int VideoCapture::read_frame() {
 
       assert(i < buffers.size());
 
-      process_image((void *)buf.m.userptr);
+      process_image((void *)buf.m.userptr, 0);
 
       if (-1 == xioctl(fd, VIDIOC_QBUF, &buf)) errno_exit("VIDIOC_QBUF");
 

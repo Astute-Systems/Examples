@@ -91,9 +91,9 @@ class VideoCapture {
   /// \brief Process a captured image
   ///
   /// \param p The image buffer
-  /// \param frame The frame number
+  /// \param field Indicated TOP or BOTTOM for interlaced video
   ///
-  void process_image(const void *p);
+  void process_image(const void *p, int field);
 
   ///
   /// \brief Read a frame from the video device
