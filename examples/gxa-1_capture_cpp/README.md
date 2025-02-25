@@ -52,6 +52,20 @@ Progressing video @25 FPS
 ./bin/capture_cpp -io_method 1 -device /dev/video3 -video_standard=NTSC
 ```
 
+## Gstreamer
+
+With the new driver you can deinterlace using gstreamer using the pipeline below.
+
+``` .bash
+gst-launch-1.0 -v v4l2src device=/dev/video0  ! videoconvert ! deinterlace ! xvimagesink
+```
+
+For FPS:
+
+``` .bash
+gst-launch-1.0 -v v4l2src device=/dev/video0  ! videoconvert ! deinterlace ! fpsdisplaysink
+```
+
 ## YouTube
 
 Video showing PAL / NTSC and progressive and interlaces peformance can be found on YouTube
