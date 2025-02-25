@@ -37,3 +37,9 @@ Progressing video @25 FPS
 ./bin/capture_cpp -io_method 1 -device /dev/video3 -video_standard=NTSC
 ```
 
+## YouTube
+
+Video showing PAL / NTSC and progressive and interlaces peformance can be found on YouTube
+
+* [PAL/NTSC](https://www.youtube.com/watch?v=2ZZsYBmEw5c) on YouTube
+* [Interlaced vs Progessive](https://www.youtube.com/watch?v=KeAOh9Jrm80) on YouTube
