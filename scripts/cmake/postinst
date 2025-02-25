@@ -1,0 +1,10 @@
+#!/bin/bash -e
+
+# find the tw686x.ko file in  "/lib/modules/`uname -r`/kernel/drivers/media/video/tw686x"
+# and set the permissions to 644
+
+MODULE_INSTALLDIR="/lib/modules/`uname -r`/kernel/drivers/media/video/tw686x"
+echo "Setting permissions for tw6869.ko in $MODULE_INSTALLDIR"
+sudo chmod 644 $MODULE_INSTALLDIR/tw6869.ko
+depmod -ae
+modprobe tw6869

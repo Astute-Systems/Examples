@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "CPACK",
         "cropcap",
         "DGST",
         "DQBUF",
@@ -10,6 +11,7 @@
         "gstreamer",
         "hmru",
         "Initalise",
+        "INSTALLDIR",
         "ledoff",
         "ledon",
         "libgflags",
@@ -18,9 +20,13 @@
         "MEDIAX",
         "mplayer",
         "NTSC",
+        "postinst",
         "ppmheader",
         "QBUF",
+        "SHLIBDEPS",
+        "SHLIBS",
         "STREAMON",
+        "tegra",
         "VIDIOC",
         "xioctl",
         "YUYV"
