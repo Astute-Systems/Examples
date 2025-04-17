@@ -1,0 +1,12 @@
+[package]
+name = "joystick_rs"
+version = "0.1.0"
+edition = "2021"
+license-file = "LICENSE"
+description = "A Video gateway written in Rust"
+authors = ["Ross Newman <ross.newman@adventatum.com>"]
+homepage = "https://www.adventatum.com"
+
+[dependencies]
+tokio = "1.0.0"
+gilrs = "0.11.0"

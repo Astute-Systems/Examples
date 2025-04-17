@@ -8,7 +8,7 @@
 //
 /// \brief An example showing how to read every button on an Xbox 360 joystick using SDL2
 ///
-/// \file joystick.cc
+/// \file joystick_cpp.cc
 ///
 
 #include <SDL2/SDL.h>

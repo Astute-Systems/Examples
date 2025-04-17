@@ -5,6 +5,7 @@
         "DGST",
         "DQBUF",
         "gflags",
+        "gilrs",
         "gpioctl",
         "gpiod",
         "greyscale",
