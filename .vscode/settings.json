@@ -2,6 +2,7 @@
     "cSpell.words": [
         "CPACK",
         "cropcap",
+        "depay",
         "DGST",
         "DQBUF",
         "gflags",
@@ -24,6 +25,7 @@
         "postinst",
         "ppmheader",
         "QBUF",
+        "rtph",
         "SHLIBDEPS",
         "SHLIBS",
         "STREAMON",

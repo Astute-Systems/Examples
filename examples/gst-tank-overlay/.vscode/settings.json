@@ -1,0 +1,23 @@
+{
+    "cSpell.words": [
+        "autovideosink",
+        "avdec",
+        "cairooverlay",
+        "capsfilter",
+        "depay",
+        "depayloader",
+        "gboolean",
+        "gchar",
+        "gpointer",
+        "gstreamer",
+        "guint",
+        "libav",
+        "libcairo",
+        "libgstreamer",
+        "rtph",
+        "udpsink",
+        "vaapih",
+        "videoconvert",
+        "ximagesink"
+    ]
+}
