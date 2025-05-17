@@ -1,3 +1,12 @@
+//
+// Copyright (c) 2025, Astute Systems PTY LTD
+//
+// This file is part of the VivoeX project developed by Astute Systems.
+//
+// Licensed under the Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+// License. See the LICENSE file in the project root for full license details.
+//
+
 #include <cairo-gobject.h>
 #include <cairo.h>
 #include <glib.h>
@@ -6,10 +15,18 @@
 #include <gst/video/video.h>
 #include <stdio.h>
 #include <time.h>
-// std::string
-#include <string>
-// Required libraries: gstreamer1.0-dev, libgstreamer-plugins-base1.0-dev, libcairo2-dev
 
+#include <string>
+#include <thread>
+
+#include "common/display_manager_sdl.h"
+
+// #define HEIGHT 576
+// #define WIDTH 720
+#define HEIGHT 480
+#define WIDTH 640
+
+DisplayManager *dm_ptr;
 // Callback function to handle messages from the GStreamer bus
 static gboolean on_message(GstBus *bus, GstMessage *message, gpointer user_data) {
   GMainLoop *loop = (GMainLoop *)user_data;
@@ -154,7 +171,6 @@ static void draw_overlay(GstElement *overlay, cairo_t *cr, guint64 timestamp, gu
   cairo_move_to(cr, 270, -20);
   camera_mode(cr, "DAY");
 }
-// ...existing code...
 
 // Callback to handle new sample from appsink
 static GstFlowReturn on_new_sample(GstElement *sink, gpointer user_data) {
@@ -177,7 +193,8 @@ static GstFlowReturn on_new_sample(GstElement *sink, gpointer user_data) {
   if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
     // Process the RGB data in `map.data` with size `map.size`
     // Example: Print the size of the buffer
-    g_print("Received RGB buffer of size: %zu\n", map.size);
+    // Fill buffer with ff
+    dm_ptr->DisplayBuffer(map.data, {WIDTH, HEIGHT, 3}, "Tank Overlay");
 
     // Unmap the buffer after processing
     gst_buffer_unmap(buffer, &map);
@@ -191,8 +208,8 @@ static GstFlowReturn on_new_sample(GstElement *sink, gpointer user_data) {
 
 // Function to set up the GStreamer pipeline
 static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
-  int width = 640;
-  int height = 480;
+  int width = WIDTH;
+  int height = HEIGHT;
   int framerate = 30;
 
   // Create pipeline and elements
@@ -205,15 +222,18 @@ static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   auto *capabilities = gst_element_factory_make("capsfilter", "capsfilter");
   GstCaps *caps = gst_caps_new_simple("application/x-rtp", "media", G_TYPE_STRING, "video", "encoding-name",
                                       G_TYPE_STRING, "H264", "payload", G_TYPE_INT, 96, NULL);
-
   // Add RTP depayloader and H.264 decoder
   auto *rtph264depay = gst_element_factory_make("rtph264depay", "rtph264depay");
   auto *h264decoder = gst_element_factory_make("vaapih264dec", "h264decoder");
   auto *adaptor1 = gst_element_factory_make("videoconvert", "adaptor1");
   auto *cairo_overlay = gst_element_factory_make("cairooverlay", "overlay");
   auto *adaptor2 = gst_element_factory_make("videoconvert", "adaptor2");
-  // auto *sink = gst_element_factory_make("appsink", "sink");
-  auto *sink = gst_element_factory_make("xvimagesink", "sink");
+  auto *capabilities2 = gst_element_factory_make("capsfilter", "capsfilter2");
+  // Capabilities for the adaptor2 RBG raw output
+  GstCaps *caps2 = gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "RGB", NULL);
+  g_object_set(capabilities2, "caps", caps2, NULL);
+
+  auto *sink = gst_element_factory_make("appsink", "sink");
 
   // Ensure all elements are created
   g_assert(source);
@@ -222,43 +242,44 @@ static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   g_assert(adaptor1);
   g_assert(cairo_overlay);
   g_assert(adaptor2);
+  g_assert(capabilities2);
   g_assert(sink);
 
   // Configure appsink to output RGB data
   g_object_set(sink, "emit-signals", TRUE, "sync", FALSE, NULL);
   g_signal_connect(sink, "new-sample", G_CALLBACK(on_new_sample), NULL);
 
-  // Set caps for the camera source
-  auto *caps_camera =
-      gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "RGB", "width", G_TYPE_INT, width, "height",
-                          G_TYPE_INT, height, "framerate", GST_TYPE_FRACTION, framerate, 1, NULL);
-
-  g_object_set(capabilities, "caps", caps_camera, NULL);
-  gst_caps_unref(caps_camera);
-
   // Connect signals for cairo overlay
   g_signal_connect(cairo_overlay, "draw", G_CALLBACK(draw_overlay), overlay_state);
   g_signal_connect(cairo_overlay, "caps-changed", G_CALLBACK(prepare_overlay), overlay_state);
 
   // Add elements to the pipeline and link them
-
   gst_bin_add_many(GST_BIN(pipeline), source, capabilities, rtph264depay, h264decoder, adaptor1, cairo_overlay,
-                   adaptor2, sink, NULL);
-  if (!gst_element_link_many(source, capabilities, rtph264depay, h264decoder, adaptor1, cairo_overlay, adaptor2, sink,
-                             NULL)) {
+                   adaptor2, capabilities2, sink, NULL);
+
+  if (!gst_element_link_many(source, capabilities, rtph264depay, h264decoder, adaptor1, cairo_overlay, adaptor2,
+                             capabilities2, sink, NULL)) {
     g_warning("Failed to link elements!");
   }
 
   return pipeline;
 }
 
-// ...existing code...
 // Main function
 int main(int argc, char **argv) {
   GMainLoop *loop;
   GstElement *pipeline;
   GstBus *bus;
   CairoOverlayState *overlay_state;
+
+  DisplayManager dm;
+  dm_ptr = &dm;
+
+  // Initalise Display Manager
+  dm.Initalise(WIDTH, HEIGHT, "Sight overlay");
+  std::thread display_thread(&DisplayManager::Run, &dm);
+  display_thread.detach();
+  dm.ToggleFullscreen();
 
   // Initialize GStreamer
   gst_init(&argc, &argv);

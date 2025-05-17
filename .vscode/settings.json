@@ -1,8 +1,11 @@
 {
     "cSpell.words": [
+        "cairooverlay",
+        "capsfilter",
         "CPACK",
         "cropcap",
         "depay",
+        "depayloader",
         "DGST",
         "DQBUF",
         "gflags",
@@ -30,6 +33,7 @@
         "SHLIBS",
         "STREAMON",
         "tegra",
+        "vaapih",
         "VIDIOC",
         "xioctl",
         "YUYV"
