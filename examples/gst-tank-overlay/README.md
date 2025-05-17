@@ -8,8 +8,16 @@ apt-get install gstreamer1.0-dev libgstreamer-plugins-base1.0-dev libcairo2-dev 
 
 ## H.264 RTP streaming
 
+Using Intel VAAPI encoder
+
 ``` .bashrc
 gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! vaapih264enc ! rtph264pay config-interval=1 ! udpsink host=127.0.0.1 port=5006
+```
+
+Or using openh264 (CISCO), best option for software encoding
+
+``` .bashrc
+gst-launch-1.0 v4l2src device=/dev/video0 ! deinterlace ! videoconvert !  openh264enc ! rtph264pay config-interval=1 ! udpsink host=255.255.255.255 port=5006
 ```
 
 ## Screenshot

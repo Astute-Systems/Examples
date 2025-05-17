@@ -9,6 +9,7 @@
 
 #include <cairo-gobject.h>
 #include <cairo.h>
+#include <gflags/gflags.h>
 #include <glib.h>
 #include <gst/app/gstappsink.h>
 #include <gst/gst.h>
@@ -16,15 +17,23 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <iostream>
 #include <string>
 #include <thread>
 
 #include "common/display_manager_sdl.h"
 
-// #define HEIGHT 576
-// #define WIDTH 720
-#define HEIGHT 480
-#define WIDTH 640
+#define HEIGHT 720
+#define WIDTH 1280
+
+// Fullscreen gflag bool
+DEFINE_bool(fullscreen, false, "Enable fullscreen mode");
+// Define an integer flag for setting the width
+DEFINE_int32(width, 720, "Set the width of the display");
+// Define an integer flag for setting the height
+DEFINE_int32(height, 576, "Set the height of the display");
+// Port for the UDP source
+DEFINE_int32(port, 5006, "Set the port for the UDP source");
 
 DisplayManager *dm_ptr;
 // Callback function to handle messages from the GStreamer bus
@@ -88,6 +97,36 @@ static void camera_mode(cairo_t *cr, const std::string &mode) {
   cairo_show_text(cr, mode.c_str());
 }
 
+void redicle1(cairo_t *cr) {
+  // Draw the reticle
+  int y_offset = -28;
+
+  // Set the color to black for the outer circle with 50% transparency
+  cairo_set_source_rgba(cr, 1, 1, 1, 0.5);          // Black with 50% transparency
+  cairo_arc(cr, 0, 0 - y_offset, 50, 0, 2 * M_PI);  // Outer circle
+  cairo_stroke(cr);
+
+  // Set the color to black for the inner circle with 50% transparency
+  cairo_arc(cr, 0, 0 - y_offset, 10, 0, 2 * M_PI);  // Inner circle
+  cairo_stroke(cr);
+
+  // Draw horizontal and vertical lines for the crosshair
+  cairo_move_to(cr, -60, 0 - y_offset);  // Left horizontal line
+  cairo_line_to(cr, -15, 0 - y_offset);
+  cairo_move_to(cr, 15, 0 - y_offset);  // Right horizontal line
+  cairo_line_to(cr, 60, 0 - y_offset);
+  cairo_move_to(cr, 0, -60 - y_offset);  // Top vertical line
+  cairo_line_to(cr, 0, -15 - y_offset);
+  cairo_move_to(cr, 0, 15 - y_offset);  // Bottom vertical line
+  cairo_line_to(cr, 0, 60 - y_offset);
+  cairo_stroke(cr);
+
+  // Set the color to red for the center dot with 50% transparency
+  cairo_set_source_rgba(cr, 1, 0, 0, 0.5);         // Red with 50% transparency
+  cairo_arc(cr, 0, 0 - y_offset, 3, 0, 2 * M_PI);  // Center dot
+  cairo_fill(cr);
+}
+
 // Callback to draw the overlay using Cairo
 static void draw_overlay(GstElement *overlay, cairo_t *cr, guint64 timestamp, guint64 duration, gpointer user_data) {
   char *labels[] = {"270", "215", " 0 ", " 45"};
@@ -113,9 +152,13 @@ static void draw_overlay(GstElement *overlay, cairo_t *cr, guint64 timestamp, gu
   cairo_set_line_width(cr, 1);
   cairo_set_source_rgb(cr, 1, 1, 1);
 
-  // Draw a square and other shapes
-  cairo_rectangle(cr, -10, -10, +20, +20);
-  cairo_rectangle(cr, 0, 0, 1, 1);
+  // Set the color to black for the outline
+  cairo_set_source_rgb(cr, 0, 0, 0);
+
+  redicle1(cr);
+
+  // Set draw colour back to white
+  cairo_set_source_rgb(cr, 1, 1, 1);
 
   // Draw degree markers and labels
   for (int i = 0; i < 40; i++) {
@@ -136,9 +179,6 @@ static void draw_overlay(GstElement *overlay, cairo_t *cr, guint64 timestamp, gu
   cairo_move_to(cr, -5, -200);
   cairo_line_to(cr, 0, -195);
   cairo_line_to(cr, 5, -200);
-
-  // Additional crosshair lines and telemetry
-  // ...
 
   cairo_stroke(cr);
 
@@ -177,6 +217,7 @@ static GstFlowReturn on_new_sample(GstElement *sink, gpointer user_data) {
   GstSample *sample;
   GstBuffer *buffer;
   GstMapInfo map;
+  static int count = 0;
 
   // Pull the sample from appsink
   sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
@@ -193,7 +234,6 @@ static GstFlowReturn on_new_sample(GstElement *sink, gpointer user_data) {
   if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
     // Process the RGB data in `map.data` with size `map.size`
     // Example: Print the size of the buffer
-    // Fill buffer with ff
     dm_ptr->DisplayBuffer(map.data, {WIDTH, HEIGHT, 3}, "Tank Overlay");
 
     // Unmap the buffer after processing
@@ -205,31 +245,37 @@ static GstFlowReturn on_new_sample(GstElement *sink, gpointer user_data) {
 
   return GST_FLOW_OK;
 }
-
 // Function to set up the GStreamer pipeline
 static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
-  int width = WIDTH;
-  int height = HEIGHT;
+  int width = FLAGS_width;
+  int height = FLAGS_height;
   int framerate = 30;
 
   // Create pipeline and elements
   auto *pipeline = gst_pipeline_new("cairo-overlay-example");
   // RTP H.264 source
   auto *source = gst_element_factory_make("udpsrc", "source");
-  g_object_set(source, "port", 5006, NULL);  // Set the UDP port for receiving RTP packets
+  g_object_set(source, "port", FLAGS_port, NULL);  // Set the UDP port for receiving RTP packets
 
   // Define caps for RTP H.264
   auto *capabilities = gst_element_factory_make("capsfilter", "capsfilter");
   GstCaps *caps = gst_caps_new_simple("application/x-rtp", "media", G_TYPE_STRING, "video", "encoding-name",
                                       G_TYPE_STRING, "H264", "payload", G_TYPE_INT, 96, NULL);
-  // Add RTP depayloader and H.264 decoder
+
+  // Add RTP depayloader, H.264 decoder, and deinterlacer
   auto *rtph264depay = gst_element_factory_make("rtph264depay", "rtph264depay");
   auto *h264decoder = gst_element_factory_make("vaapih264dec", "h264decoder");
+  auto *deinterlace = gst_element_factory_make("deinterlace", "deinterlace");
+  auto *videoscale = gst_element_factory_make("videoscale", "videoscale");
+  auto *capsfilter = gst_element_factory_make("capsfilter", "capsfilter720p");
+  GstCaps *caps720p = gst_caps_new_simple("video/x-raw", "width", G_TYPE_INT, 1280, "height", G_TYPE_INT, 720, NULL);
+  g_object_set(capsfilter, "caps", caps720p, NULL);
+
+  // Add overlay and other elements
   auto *adaptor1 = gst_element_factory_make("videoconvert", "adaptor1");
   auto *cairo_overlay = gst_element_factory_make("cairooverlay", "overlay");
   auto *adaptor2 = gst_element_factory_make("videoconvert", "adaptor2");
   auto *capabilities2 = gst_element_factory_make("capsfilter", "capsfilter2");
-  // Capabilities for the adaptor2 RBG raw output
   GstCaps *caps2 = gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "RGB", NULL);
   g_object_set(capabilities2, "caps", caps2, NULL);
 
@@ -239,6 +285,9 @@ static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   g_assert(source);
   g_assert(rtph264depay);
   g_assert(h264decoder);
+  g_assert(deinterlace);
+  g_assert(videoscale);
+  g_assert(capsfilter);
   g_assert(adaptor1);
   g_assert(cairo_overlay);
   g_assert(adaptor2);
@@ -254,11 +303,11 @@ static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   g_signal_connect(cairo_overlay, "caps-changed", G_CALLBACK(prepare_overlay), overlay_state);
 
   // Add elements to the pipeline and link them
-  gst_bin_add_many(GST_BIN(pipeline), source, capabilities, rtph264depay, h264decoder, adaptor1, cairo_overlay,
-                   adaptor2, capabilities2, sink, NULL);
+  gst_bin_add_many(GST_BIN(pipeline), source, capabilities, rtph264depay, h264decoder, deinterlace, videoscale,
+                   capsfilter, adaptor1, cairo_overlay, adaptor2, capabilities2, sink, NULL);
 
-  if (!gst_element_link_many(source, capabilities, rtph264depay, h264decoder, adaptor1, cairo_overlay, adaptor2,
-                             capabilities2, sink, NULL)) {
+  if (!gst_element_link_many(source, capabilities, rtph264depay, h264decoder, deinterlace, videoscale, capsfilter,
+                             adaptor1, cairo_overlay, adaptor2, capabilities2, sink, NULL)) {
     g_warning("Failed to link elements!");
   }
 
@@ -275,11 +324,18 @@ int main(int argc, char **argv) {
   DisplayManager dm;
   dm_ptr = &dm;
 
+  // Init gflags
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   // Initalise Display Manager
-  dm.Initalise(WIDTH, HEIGHT, "Sight overlay");
+  dm.Initalise(FLAGS_width, FLAGS_height, "Sight overlay");
   std::thread display_thread(&DisplayManager::Run, &dm);
   display_thread.detach();
-  dm.ToggleFullscreen();
+
+  // Toggle fullscreen on gflag
+  if (FLAGS_fullscreen) {
+    dm.ToggleFullscreen();
+  }
 
   // Initialize GStreamer
   gst_init(&argc, &argv);
