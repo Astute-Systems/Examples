@@ -35,8 +35,10 @@
         "tegra",
         "vaapih",
         "VIDIOC",
+        "Vivoe",
         "xioctl",
-        "YUYV"
+        "YUYV",
+        "Zenoh"
     ],
     "cmake.configureOnOpen": false,
     "C_Cpp.clang_format_path": "/usr/bin/clang-format",

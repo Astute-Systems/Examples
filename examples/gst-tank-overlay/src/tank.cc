@@ -23,8 +23,8 @@
 
 #include "common/display_manager_sdl.h"
 
-#define HEIGHT 720
-#define WIDTH 1280
+#define HEIGHT 576
+#define WIDTH 720
 
 // Fullscreen gflag bool
 DEFINE_bool(fullscreen, false, "Enable fullscreen mode");
@@ -245,6 +245,7 @@ static GstFlowReturn on_new_sample(GstElement *sink, gpointer user_data) {
 
   return GST_FLOW_OK;
 }
+
 // Function to set up the GStreamer pipeline
 static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   int width = FLAGS_width;
@@ -261,21 +262,14 @@ static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   auto *capabilities = gst_element_factory_make("capsfilter", "capsfilter");
   GstCaps *caps = gst_caps_new_simple("application/x-rtp", "media", G_TYPE_STRING, "video", "encoding-name",
                                       G_TYPE_STRING, "H264", "payload", G_TYPE_INT, 96, NULL);
-
-  // Add RTP depayloader, H.264 decoder, and deinterlacer
+  // Add RTP depayloader and H.264 decoder
   auto *rtph264depay = gst_element_factory_make("rtph264depay", "rtph264depay");
   auto *h264decoder = gst_element_factory_make("vaapih264dec", "h264decoder");
-  auto *deinterlace = gst_element_factory_make("deinterlace", "deinterlace");
-  auto *videoscale = gst_element_factory_make("videoscale", "videoscale");
-  auto *capsfilter = gst_element_factory_make("capsfilter", "capsfilter720p");
-  GstCaps *caps720p = gst_caps_new_simple("video/x-raw", "width", G_TYPE_INT, 1280, "height", G_TYPE_INT, 720, NULL);
-  g_object_set(capsfilter, "caps", caps720p, NULL);
-
-  // Add overlay and other elements
   auto *adaptor1 = gst_element_factory_make("videoconvert", "adaptor1");
   auto *cairo_overlay = gst_element_factory_make("cairooverlay", "overlay");
   auto *adaptor2 = gst_element_factory_make("videoconvert", "adaptor2");
   auto *capabilities2 = gst_element_factory_make("capsfilter", "capsfilter2");
+  // Capabilities for the adaptor2 RBG raw output
   GstCaps *caps2 = gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "RGB", NULL);
   g_object_set(capabilities2, "caps", caps2, NULL);
 
@@ -285,9 +279,6 @@ static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   g_assert(source);
   g_assert(rtph264depay);
   g_assert(h264decoder);
-  g_assert(deinterlace);
-  g_assert(videoscale);
-  g_assert(capsfilter);
   g_assert(adaptor1);
   g_assert(cairo_overlay);
   g_assert(adaptor2);
@@ -303,11 +294,11 @@ static GstElement *setup_gst_pipeline(CairoOverlayState *overlay_state) {
   g_signal_connect(cairo_overlay, "caps-changed", G_CALLBACK(prepare_overlay), overlay_state);
 
   // Add elements to the pipeline and link them
-  gst_bin_add_many(GST_BIN(pipeline), source, capabilities, rtph264depay, h264decoder, deinterlace, videoscale,
-                   capsfilter, adaptor1, cairo_overlay, adaptor2, capabilities2, sink, NULL);
+  gst_bin_add_many(GST_BIN(pipeline), source, capabilities, rtph264depay, h264decoder, adaptor1, cairo_overlay,
+                   adaptor2, capabilities2, sink, NULL);
 
-  if (!gst_element_link_many(source, capabilities, rtph264depay, h264decoder, deinterlace, videoscale, capsfilter,
-                             adaptor1, cairo_overlay, adaptor2, capabilities2, sink, NULL)) {
+  if (!gst_element_link_many(source, capabilities, rtph264depay, h264decoder, adaptor1, cairo_overlay, adaptor2,
+                             capabilities2, sink, NULL)) {
     g_warning("Failed to link elements!");
   }
 

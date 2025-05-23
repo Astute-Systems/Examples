@@ -10,6 +10,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(examples)
 
+# If ZENOH_EXAMPLES defined
+if (DEFINED ZENOH_EXAMPLES)
+    message(STATUS "ZENOH_EXAMPLES defined")
+    add_subdirectory(zenoh)
+endif()
+
 # if Arm architecture
 message(STATUS "CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")

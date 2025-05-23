@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package can;
+
+// A CAN message definition
+message CANMessage {
+    uint32 id = 1;                // The CAN identifier (11-bit or 29-bit)
+    repeated bytes data = 2;      // The CAN data payloads (0-8 bytes each)
+    bool is_extended_id = 4;      // Whether the ID is extended (29-bit) or standard (11-bit)
+    uint64 timestamp = 6;         // Timestamp of the message (optional)
+}
