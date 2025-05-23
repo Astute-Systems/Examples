@@ -1,0 +1,15 @@
+{
+    "mode": "client",
+    "connect": {
+        "endpoints": [
+            "tls/170.64.251.83:7447"
+        ]
+    },
+    "transport": {
+        "link": {
+            "tls": {
+                "root_ca_certificate": "/etc/horas/minica.pem"
+            }
+        }
+    }
+}

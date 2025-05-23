@@ -1,6 +1,6 @@
-// Copyright (c) 2025, Advent Atum PTY LTD
+// Copyright (c) 2025,Astute Systems PTY LTD
 //
-// This file is part of the HORAS project developed by Advent Atum.
+// This file is part of the HORAS project developed byAstute Systems.
 //
 // See the commercial LICENSE file in the project directory for full license details.
 //

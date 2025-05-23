@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2025, Advent Atum PTY LTD
+# Copyright (c) 2025,Astute Systems PTY LTD
 #
-# This file is part of the HORAS project developed by Advent Atum.
+# This file is part of the HORAS project developed byAstute Systems.
 #
 # See the commercial LICENSE file in the project directory for full license details.
 #
@@ -19,8 +19,8 @@ import asyncio
 
 import time
 import zenoh
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'proto')))
-from mr_motor_pb2 import MrMotor
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../icd/proto/python')))
+from common_can_pb2 import GNSSMessage
 
 
 def main():
@@ -47,7 +47,7 @@ def main():
             serialized_message = motor_message.SerializeToString()
 
             # Publish the message
-            session.put("horas/motor/message", serialized_message)
+            session.put("can/tx/raw", serialized_message)
 
             # Print the current state
             print(f"Drive ID = {motor_message.id}, Velocity: {motor_message.velocity_target:.15f}")

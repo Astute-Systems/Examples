@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2025, Advent Atum PTY LTD
+# Copyright (c) 2025,Astute Systems PTY LTD
 #
-# This file is part of the HORAS project developed by Advent Atum.
+# This file is part of the HORAS project developed byAstute Systems.
 #
 # See the commercial LICENSE file in the project directory for full license details.
 #
@@ -16,8 +16,8 @@ import zenoh
 
 
 from datetime import datetime
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from proto.common_can_pb2 import CANMessage
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../icd/proto/python')))
+from common_can_pb2 import GNSSMessage
 
 async def main():
     # Initialize Zenoh 

@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 license-file = "LICENSE"
 description = "A simple zenoh example in Rust"
-authors = ["Ross Newman <ross.newman@adventatum.com>"]
-homepage = "https://www.adventatum.com"
+authors = ["Ross Newman <ross.newman@astutesys.com>"]
+homepage = "https://www.astutesys.com"
 
 [dependencies]
-common = { path = "../../../rust/common" }
+common = { path = "../common" }
 gflags = "0.3.12"
 zenoh = "1.3.3"
 tokio = "1.0.0"
