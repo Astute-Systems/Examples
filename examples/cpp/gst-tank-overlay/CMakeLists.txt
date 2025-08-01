@@ -12,7 +12,7 @@ pkg_check_modules(GSTREAMER gstreamer-1.0)
 pkg_check_modules(GSTREAMER_BASE gstreamer-video-1.0 gstreamer-app-1.0)
 pkg_check_modules(CAIRO cairo)
 
-include_directories(${CMAKE_SOURCE_DIR}/examples)
+include_directories(${CMAKE_SOURCE_DIR}/examples ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 # add the executable
 add_executable(tank src/tank.cc

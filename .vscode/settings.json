@@ -24,6 +24,7 @@
         "libgflags",
         "libgpiod",
         "libsdl",
+        "LIBSWSCALE",
         "MEDIAX",
         "mplayer",
         "NTSC",

@@ -7,7 +7,7 @@ find_package(PkgConfig REQUIRED)
 find_package(gflags REQUIRED)
 
 pkg_check_modules(LIBSWSCALE REQUIRED IMPORTED_TARGET libswscale)
-include_directories(${SDL2_INCLUDE_DIRS})
+include_directories(${SDL2_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 add_executable(capture_cpp main.cc video_capture.cc)
 target_link_libraries(capture_cpp common ${SDL2_LIBRARIES} gflags PkgConfig::LIBSWSCALE)
