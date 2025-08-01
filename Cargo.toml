@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "examples/joystick_rs",
+    "examples/rust/cot",
+    "examples/rust/joystick_rs",
     "examples/zenoh/rust/common",
     "examples/zenoh/rust/zenoh_example_subscriber",
     "examples/zenoh/rust/zenoh_example_simple",

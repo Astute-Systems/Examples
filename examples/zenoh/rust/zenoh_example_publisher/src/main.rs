@@ -1,8 +1,10 @@
-// Copyright (c) 2025, Advent Atum PTY LTD
 //
-// This file is part of the HORAS project developed by Advent Atum.
+// Copyright (c) 2025, Astute Systems PTY LTD
 //
-// See the commercial LICENSE file in the project directory for full license details.
+// This file is part of the VivoeX project developed by Astute Systems.
+//
+// Licensed under the Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+// License. See the LICENSE file in the project root for full license details.
 //
 //! A simple example of using Zenoh to send and receive messages.
 //!
